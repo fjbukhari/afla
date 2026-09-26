@@ -1,0 +1,28 @@
+# Never commit patient/sequencing data or large reference files
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.bam
+*.bai
+*.cram
+*.crai
+*.vcf
+*.vcf.gz
+*.bcf
+*.tbi
+*.csi
+*.fa
+*.fasta
+*.fa.gz
+*.fai
+*.2bit
+*.k2d
+# Nextflow run artefacts
+work/
+results/
+.nextflow/
+.nextflow.log*
+# local inventory outputs (share deliberately, after review)
+afla-inventory-*.txt
+!tests/data/**
