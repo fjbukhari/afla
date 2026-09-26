@@ -37,9 +37,9 @@ The v1 design needed ~150 GB+ (full VEP cache, Exomiser data, bwa-mem2 index). T
 | **Fixed total** | | **~30 GB** |
 | One exome in flight | FASTQ ~10 GB + CRAM ~5 GB + temp (streamed, work dir auto-cleaned) | ~25–35 GB |
 
-**Verdict:** the laptop can run **panels comfortably**, **one exome at a time** (tight; FASTQ deleted or archived
-after it is converted to CRAM), and **all VCF-onward/tertiary analysis**. Batches of exomes, somatic WES,
-WGS, and metagenomics with large databases go online (§3).
+**Verdict:** the laptop runs **panels comfortably**, **one exome at a time** (FASTQs are read in place, not
+copied), and **all VCF-onward/tertiary analysis**. Class-wide batches and big-database metagenomics can
+overflow to free Galaxy servers (§3.2).
 
 Laptop housekeeping built into the workflows: CRAM output instead of BAM, `cleanup = true`
 for Nextflow work dirs, a periodic "compact WSL disk" step (the WSL virtual disk does not shrink by itself), and
