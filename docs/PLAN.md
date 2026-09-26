@@ -1,20 +1,24 @@
-# Plan: Illumina NGS analysis in EPI2ME Desktop, laptop + online hybrid
+# Plan: Illumina / DNBSEQ NGS analysis in EPI2ME Desktop, zero-cost
 
-Status: **proposal v2, Stage 0 not started**. Education and research use only, not for clinical use.
+Status: **proposal v3, Stage 0 not started**. Education and research use only, not for clinical use.
 
-Changes since v1:
-- No hardware purchases → a **disk-lean laptop design** plus an **online path for heavy jobs**.
-- The existing HTML tertiary tool can't be shared → **we build a new tertiary analysis tool ("AFLA Interpreter")**.
+Constraints (confirmed):
+- **Zero budget:** no hardware upgrades, no paid cloud, no university HPC (not available in Pakistan).
+- **Laptop:** Windows 11, 64 GB RAM, 16 cores, 8 GB NVIDIA GPU, ~100 GB free disk.
+- **Reference:** GRCh38 only.
+- **First data:** BGI exomes (DNBSEQ platform), capture kit unknown (possibly Agilent SureSelect).
+- The existing HTML tertiary tool can't be shared → **we build a new one ("AFLA Interpreter")**.
+
+Compute model: **laptop for everything, one exome at a time; free public Galaxy servers as overflow.**
 
 ## 1. Guiding decisions
 
-1. **Write the workflows once and run them anywhere.** They are Nextflow + containers following the EPI2ME
-   `wf-template` layout. The same `nextflow_schema.json` that draws the EPI2ME form also draws
-   the launch form on Seqera Platform, and the same code runs on the laptop, a cloud VM, or a university
-   HPC (`-profile local | cloud | hpc`).
+1. **Write the workflows once, in the portable format.** They are Nextflow + containers following the EPI2ME
+   `wf-template` layout. They run in EPI2ME Desktop on the laptop, and the same code can later run on any
+   Linux server or cloud unchanged if resources ever become available.
 2. **Start at any stage:** `start_from = fastq | bam | vcf | annotated`, auto-detected from file type.
-3. **Move small files, not big ones.** The heavy primary steps (FASTQ → CRAM/VCF) run wherever there is
-   space. The VCF (a few MB) comes back to the laptop, where all tertiary work happens, offline.
+3. **Move small files, not big ones.** When FASTQ → VCF is done on Galaxy, only the VCF (a few MB) comes back.
+   All tertiary work happens on the laptop, offline.
 4. **Licensing:** only free/open or free-for-non-commercial resources. Registration-licensed data is
    downloaded by each user and never redistributed. Every report carries a "not for clinical use" banner
    and lists tool and database versions.
@@ -41,22 +45,41 @@ Laptop housekeeping built into the workflows: CRAM output instead of BAM, `clean
 for Nextflow work dirs, a periodic "compact WSL disk" step (the WSL virtual disk does not shrink by itself), and
 WSL memory capped at ~52 GB. The GPU is optional (DeepVariant runs fine on CPU for exomes, ~1 h).
 
-## 3. Online options for heavy jobs
+## 3. Zero-cost compute
 
-| Option | Cost | Runs *our* workflows? | GUI | Best for |
-|---|---|---|---|---|
-| **A. Cloud VM (AWS/GCP/Azure) via Seqera Platform or Nextflow CLI** | ~US$1–3 per exome on spot/preemptible 16 vCPU/64 GB VMs + storage; research/education **credit programmes** can cover this | Yes, identical | Seqera web launch form from the same schema | Batches, WES/WGS, somatic, metagenomics |
-| **B. University / national HPC** | Usually free for academics | Yes (`-profile hpc`, Apptainer) | CLI (or Seqera if the site supports it) | If you have access, this is the best free route |
-| **C. Public Galaxy servers** (usegalaxy.eu/.org/.org.au) | Free; a few hundred GB quota; free **Training Infrastructure as a Service (TIaaS)** queues for classes | No, Galaxy's own tools (BWA-MEM2, DeepVariant/FreeBayes, Mutect2, Kraken2 with prebuilt DBs …) | Web GUI | Zero-budget teaching; export the VCF → AFLA Interpreter |
-| D. Cloud VM with remote desktop running EPI2ME for Linux | Pay while it is on, even idle | Yes | Same EPI2ME GUI | Only if EPI2ME-look is essential |
-| ✗ Colab/Kaggle, BaseSpace/DRAGEN | Session/disk limits; commercial credits | No | | Not recommended |
+### 3.1 Laptop: "one exome at a time" recipe
+- **FASTQs are read where they already are** (e.g. `D:\\exomes\\…` via `/mnt/d`), never copied into WSL.
+  This is slower I/O, but it saves 10–15 GB per sample.
+- Alignment is **streamed** (`bwa mem | samtools sort` → CRAM) with no intermediate SAM/BAM. Duplicate marking
+  is done on the fly (`samtools markdup`).
+- Variant calling is **restricted to the capture BED ±100 bp**, which is faster and needs less temporary space.
+- The Nextflow `work/` directory is deleted on success. Outputs kept per exome: CRAM (~4–6 GB), gVCF/VCF, QC, report.
+- After a batch, a helper script shrinks the WSL virtual disk (`wsl --shutdown` + `Optimize-VHD`/`diskpart compact`).
+- Budget: ~30 GB fixed (references, containers, lean annotation) + ~25 GB peak per exome. This fits in 100 GB with margin.
+  Old CRAMs can be archived to any spare USB stick or phone storage if needed.
+- The GPU is optional; CPU DeepVariant on an exome takes ~1 h on 14 cores. An exome end to end is roughly 3–4 h, so it can run overnight.
 
-**Recommendation:**
-1. **Hybrid (A or B) + laptop.** The laptop runs EPI2ME for panels, single exomes and all tertiary work.
-   Heavy runs use the *same* workflows on a cloud VM or HPC, and only the CRAM/VCF/report comes back.
-   Apply for cloud research/education credits. If a university HPC is available, use that first.
-2. **Galaxy (C) as the free fallback and teaching companion.** Students can do FASTQ → VCF on Galaxy with
-   Galaxy Training Network tutorials, then load the VCF into the AFLA Interpreter. No cost at all.
+### 3.2 Free overflow: public Galaxy servers
+usegalaxy.eu / usegalaxy.org / usegalaxy.org.au are free, need no install, and give a few hundred GB of quota each. They also offer
+**free TIaaS** (Training Infrastructure as a Service) queues for classes. Use them when the laptop is busy, for
+whole-class exercises, or for metagenomics with big databases. Students do FASTQ → VCF there (BWA-MEM2,
+DeepVariant/FreeBayes, Kraken2 …), download the VCF (a few MB) and open it in the AFLA Interpreter on any computer.
+Tip: if BGI provides download links for the data, give Galaxy the URL directly instead of uploading over a slow connection.
+
+### 3.3 Not used
+Paid cloud, Parabricks (needs a ≥16 GB GPU), and free-tier ARM cloud VMs (most bioinformatics containers are
+x86-only). Colab/Kaggle are ruled out by disk and session limits.
+
+## 3a. BGI / DNBSEQ data specifics
+- BGI "Illumina-like" exomes are usually sequenced on **DNBSEQ** (MGISEQ/DNBSEQ-G400/T7). The FASTQ format is the same;
+  headers differ, and the read group uses `PL:DNBSEQ`. fastp handles DNBSEQ adapters (auto-detected, or the MGI adapter preset).
+- DeepVariant's WES model is trained mainly on Illumina, but it works well on DNBSEQ. We will **check this ourselves**
+  with public DNBSEQ reference-sample (GIAB HG001/HG002) data plus hap.py, and fall back to GATK HaplotypeCaller if needed.
+- **Unknown capture kit → auto-detection:** the workflow measures on-target coverage against candidate BEDs
+  (Agilent SureSelect V5/V6/V7/V8, IDT xGen v1/v2, Twist Exome 2.x, BGI/MGI Exome V4/V5 where available) and
+  reports the best match. Agilent BEDs need a free SureDesign login, so each user downloads them once. If none matches, it
+  falls back to a **data-derived target BED** (regions ≥20× from `mosdepth`, intersected with GENCODE coding exons ±50 bp).
+- BGI often also delivers **BAM and VCF**. Those enter directly through `start_from = bam | vcf`.
 
 ## 4. AFLA Interpreter (new tertiary analysis tool)
 
@@ -85,31 +108,31 @@ A **single self-contained HTML file**: no server, no install, works offline. It 
 7. Later: CNV and ROH tracks, a somatic mode (AMP/ASCO/CAP tiers, CIViC/OncoKB), and a teaching mode
    (hide the answer, compare the student's classification with the instructor key).
 
-Optional heavy add-ons on the cloud/HPC path: full Exomiser, CADD, SpliceAI precomputed scores, dbNSFP.
+Offline-first: all core annotation comes from the lean local bundle. Live gnomAD/ClinVar/Ensembl lookups are an
+optional extra when there is internet. Heavy add-ons (full Exomiser, CADD, SpliceAI precomputed scores, dbNSFP) are
+optional because of disk. SpliceAI can instead be run locally on the GPU for the handful of filtered candidates.
 
 ## 5. Workflows
 
-| Workflow | Laptop | Online | Stage |
+| Workflow | Laptop | Galaxy overflow | Stage |
 |---|---|---|---|
-| `wf-illumina-germline` (this repo): fastp → bwa → markdup → DeepVariant/GATK → annotate → Interpreter | panels, 1 exome | batches, WGS | 1–3 |
-| `wf-illumina-somatic`: Mutect2 (+ GATK PoN), CNVkit, MSIsensor-pro, TMB | panels | WES | 4 |
-| `wf-illumina-bacterial`: Shovill, QUAST, mlst, AMRFinderPlus, MOB-suite | ✓ | batches | 5 |
-| `wf-illumina-metagenomics`: Hostile, Kraken2/Bracken (8 GB DB), Krona | small DB | large DBs | 5 |
+| `wf-illumina-germline` (this repo): fastp → bwa → markdup → DeepVariant/GATK → annotate → Interpreter | panels, 1 exome at a time | class-wide FASTQ → VCF | 1–3 |
+| `wf-illumina-somatic`: Mutect2 (+ GATK PoN), CNVkit, MSIsensor-pro, TMB | panels, 1 WES at a time | ✓ | 4 |
+| `wf-illumina-bacterial`: Shovill, QUAST, mlst, AMRFinderPlus, MOB-suite | ✓ | ✓ | 5 |
+| `wf-illumina-metagenomics`: Hostile, Kraken2/Bracken (8 GB DB), Krona | Kraken2 8 GB DB | large DBs | 5 |
 
 ## 6. Staged roadmap (revised)
 
 | Stage | Deliverable | Done when |
 |---|---|---|
-| **0. Foundations** | Repo skeleton in EPI2ME layout; minimal workflow imported into EPI2ME; `setup-references --lean`; `local`/`cloud`/`hpc` profiles; laptop setup guide | Imported workflow runs from the EPI2ME GUI; lean references use <35 GB |
+| **0. Foundations** | Repo skeleton in EPI2ME layout; minimal workflow imported into EPI2ME; `setup-references --lean`; Windows 11/WSL2 setup guide with disk-compaction helper | Imported workflow runs from the EPI2ME GUI; lean references use <35 GB |
 | **1. AFLA Interpreter v1** (first, because it delivers value immediately with *existing* VCFs) | Standalone HTML: VCF load, filters, panels, variant cards, live gnomAD/ClinVar lookup, case report | A GIAB or public teaching VCF goes through filtering → report entirely in the browser |
-| **2. Germline workflow** | FASTQ/BAM/VCF entry, QC, DeepVariant, lean annotation bundle, Interpreter as the EPI2ME report; hap.py benchmark on GIAB HG002 exome | HG002 SNV F1 > 0.99 in high-confidence capture regions |
-| **3. Tertiary depth** | ACMG assistant, HPO matching, trio/inheritance, CNV (ExomeDepth/CNVkit), ROH, teaching mode; cloud profile tested end to end | Solved teaching cases rank the causal variant in the top 5 |
+| **2. Germline workflow** | FASTQ/BAM/VCF entry, DNBSEQ support, capture-kit auto-detection, QC, DeepVariant, lean annotation bundle, Interpreter as the EPI2ME report; hap.py benchmark on GIAB exome (DNBSEQ + Illumina) | SNV F1 > 0.99 in high-confidence capture regions; one BGI exome completes on the laptop within the disk budget |
+| **3. Tertiary depth** | ACMG assistant, HPO matching, trio/inheritance, CNV (ExomeDepth/CNVkit), ROH (important for consanguineous families), teaching mode; Galaxy → Interpreter handover guide | Solved teaching cases rank the causal variant in the top 5 |
 | **4. Somatic** | workflow + Interpreter somatic mode | Public reference samples (e.g. SEQC2) reproduce expected calls |
 | **5. Microbiology & metagenomics** | two workflows + HTML reports | Reference isolates/mock communities give the expected results |
 
 ## 7. Open questions
 
-1. Laptop OS (Windows 11 → WSL2)?
-2. Does the institution have an HPC cluster, or can you apply for cloud research/education credits?
-3. Capture kits/panels in use (BED files) and typical number of samples per class.
-4. GRCh38 only (recommended), or GRCh37 VCF input too?
+1. What exactly did BGI deliver: FASTQ only, or also BAM/VCF? Does their report or delivery email name the capture kit?
+2. Typical number of students/samples per class (decides whether Galaxy TIaaS is worth requesting).
