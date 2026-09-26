@@ -38,3 +38,11 @@ identifiers appear in folder names, then either:
 
 Each item will then be marked **keep / update / re-download / delete** against the plan's requirements
 (GRCh38 no-alt analysis set, matching indexes, VEP cache version, recent ClinVar, and so on).
+
+## GPU check
+
+```bash
+bash afla/scripts/afla-gpu-check.sh
+```
+This confirms the GPU is visible in WSL and inside Docker containers, and shows how many CPUs and how much RAM
+Docker Desktop is allowed to use. It downloads a ~150 MB CUDA test image and removes it again.

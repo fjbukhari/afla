@@ -43,7 +43,7 @@ overflow to free Galaxy servers (§3.2).
 
 Laptop housekeeping built into the workflows: CRAM output instead of BAM, `cleanup = true`
 for Nextflow work dirs, a periodic "compact WSL disk" step (the WSL virtual disk does not shrink by itself), and
-WSL memory capped at ~52 GB. The GPU is optional (DeepVariant runs fine on CPU for exomes, ~1 h).
+WSL memory capped at ~52 GB. The GPU is used when available (§3.4).
 
 ## 3. Zero-cost compute
 
@@ -57,7 +57,7 @@ WSL memory capped at ~52 GB. The GPU is optional (DeepVariant runs fine on CPU f
 - After a batch, a helper script shrinks the WSL virtual disk (`wsl --shutdown` + `Optimize-VHD`/`diskpart compact`).
 - Budget: ~30 GB fixed (references, containers, lean annotation) + ~25 GB peak per exome. This fits in 100 GB with margin.
   Old CRAMs can be archived to any spare USB stick or phone storage if needed.
-- The GPU is optional; CPU DeepVariant on an exome takes ~1 h on 14 cores. An exome end to end is roughly 3–4 h, so it can run overnight.
+- With the GPU (§3.4), DeepVariant on an exome takes ~35–45 min (~1 h on CPU only). An exome end to end is roughly 3 h, so it can run overnight.
 
 ### 3.2 Free overflow: public Galaxy servers
 usegalaxy.eu / usegalaxy.org / usegalaxy.org.au are free, need no install, and give a few hundred GB of quota each. They also offer
@@ -69,6 +69,23 @@ Tip: if BGI provides download links for the data, give Galaxy the URL directly i
 ### 3.3 Not used
 Paid cloud, Parabricks (needs a ≥16 GB GPU), and free-tier ARM cloud VMs (most bioinformatics containers are
 x86-only). Colab/Kaggle are ruled out by disk and session limits.
+
+### 3.4 Using the GPU (8 GB NVIDIA, via WSL2 + Docker Desktop)
+Already installed on the laptop: Ubuntu (WSL2), Docker Desktop, EPI2ME Desktop, and some databases (to be inventoried).
+The GPU is reached through the **Windows** NVIDIA driver; no Linux driver goes inside WSL. Containers get it with
+`--gpus all`. `scripts/afla-gpu-check.sh` verifies this end to end.
+
+Where the GPU is used (all free, and all fit in 8 GB VRAM):
+| Step | Tool | Benefit |
+|---|---|---|
+| Variant calling | **DeepVariant GPU image** (`google/deepvariant:<ver>-gpu`) | `call_variants` several times faster. `make_examples` stays CPU-bound, so an exome goes from ~1 h to ~35–45 min |
+| Splice prediction | **SpliceAI** (TensorFlow GPU) on filtered candidates | seconds instead of minutes; avoids downloading tens of GB of precomputed scores |
+| Later / optional | ONT basecalling in EPI2ME (Dorado) if nanopore data is added | large |
+
+Not possible on 8 GB: NVIDIA Parabricks (needs ≥16 GB). Alignment therefore stays on CPU (bwa, 14 threads).
+The workflows have a `use_gpu` switch (default **on** when a GPU is detected), which gives GPU processes
+`containerOptions '--gpus all'`. With the switch off, identical CPU containers are used. To save disk, only the GPU
+DeepVariant image is kept (it also runs on CPU).
 
 ## 3a. BGI / DNBSEQ data specifics
 - BGI "Illumina-like" exomes are usually sequenced on **DNBSEQ** (MGISEQ/DNBSEQ-G400/T7). The FASTQ format is the same;
