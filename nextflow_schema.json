@@ -17,8 +17,8 @@
                     "title": "FASTQ folder",
                     "type": "string",
                     "format": "directory-path",
-                    "description": "Folder with paired Illumina FASTQ files (*_R1_001.fastq.gz / *_R2_001.fastq.gz, or *_1.fq.gz / *_2.fq.gz). Sub-folders are searched too.",
-                    "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. Files are read where they are; nothing is copied."
+                    "description": "Folder with paired Illumina FASTQ files (*_R1_001 / *_R2_001, or *_1 / *_2; .fastq, .fq, .fastq.gz or .fq.gz). Sub-folders are searched too.",
+                    "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. If the same reads exist both compressed and uncompressed, the .gz copy is used once. Files are read where they are; nothing is copied."
                 },
                 "bam": {
                     "title": "BAM / CRAM (file or folder)",
@@ -49,7 +49,7 @@
                     "title": "Reference genome (FASTA)",
                     "type": "string",
                     "format": "file-path",
-                    "description": "GRCh38 FASTA, uncompressed (recommended: hg38 / GRCh38 no-alt analysis set). Not needed when starting from a VCF.",
+                    "description": "GRCh38 FASTA, uncompressed (recommended: hg38 / GRCh38 no-alt analysis set). Not needed when starting from a VCF. Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it).",
                     "help_text": "bwa index files (.amb .ann .bwt .pac .sa) should sit next to it. The .fai and .dict files are made automatically if missing."
                 },
                 "build_bwa_index": {
@@ -203,7 +203,7 @@
                     "title": "Ensembl FASTA for HGVS names (optional)",
                     "type": "string",
                     "format": "file-path",
-                    "description": "Homo_sapiens.GRCh38.dna.primary_assembly.fa (with .fai). Needed for c./p. (HGVS) notation."
+                    "description": "Homo_sapiens.GRCh38.dna.primary_assembly.fa (with .fai). Needed for c./p. (HGVS) notation. Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
                 },
                 "vep_plugins_dir": {
                     "title": "VEP plugins folder (optional)",
@@ -215,19 +215,19 @@
                     "title": "ClinVar VCF (optional)",
                     "type": "string",
                     "format": "file-path",
-                    "description": "clinvar_GRCh38.vcf.gz with its .tbi index (monthly releases from NCBI)."
+                    "description": "clinvar_GRCh38.vcf.gz with its .tbi index (monthly releases from NCBI). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
                 },
                 "revel_file": {
                     "title": "REVEL scores (optional)",
                     "type": "string",
                     "format": "file-path",
-                    "description": "new_tabbed_revel_grch38.tsv.gz with .tbi. Missense pathogenicity score (0-1)."
+                    "description": "new_tabbed_revel_grch38.tsv.gz with .tbi. Missense pathogenicity score (0-1). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
                 },
                 "alphamissense_file": {
                     "title": "AlphaMissense scores (optional)",
                     "type": "string",
                     "format": "file-path",
-                    "description": "AlphaMissense_hg38.tsv.gz with .tbi (free for non-commercial use)."
+                    "description": "AlphaMissense_hg38.tsv.gz with .tbi (free for non-commercial use). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
                 }
             }
         },

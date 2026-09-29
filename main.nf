@@ -19,6 +19,18 @@ def flag(Object x) {
     return x != null && x.toString().trim().toLowerCase() in ['true', 'yes', '1', 'on']
 }
 
+// File pickers make it easy to choose the index (.fai/.tbi/.bai/.crai) instead of the file itself:
+// accept that and use the main file next to it.
+def mainFile(String name, Object p) {
+    if (!p) return null
+    def s = p.toString()
+    def fixed = s.replaceAll(/\.(fai|tbi|csi|bai|crai|gzi)$/, '')
+    if (fixed != s) {
+        log.warn "${name}: '${s}' is an index file; using '${fixed}' instead."
+    }
+    return file(fixed, checkIfExists: true)
+}
+
 def jsonString(Object x) {
     if (x == null) return 'null'
     if (x instanceof Boolean || x instanceof Number) return x.toString()
@@ -54,7 +66,7 @@ workflow {
 
     // ---------------------------------------------------------------- reference
     if (start != 'vcf') {
-        def fa = file(params.ref, checkIfExists: true)
+        def fa = mainFile('Reference genome', params.ref)
         ref_name = fa.name
         def fai = file("${fa}.fai")
         def dict = file("${fa.parent}/${fa.baseName}.dict")
@@ -87,10 +99,21 @@ workflow {
     if (start == 'fastq') {
         def d = params.fastq
         def pairs = channel
-            .fromFilePairs(["${d}/**_R{1,2}_001.f*q.gz", "${d}/**_R{1,2}.f*q.gz", "${d}/**_{1,2}.f*q.gz"], size: 2, flat: true)
+            .fromFilePairs(["${d}/**_R{1,2}_001.f*q.gz", "${d}/**_R{1,2}.f*q.gz", "${d}/**_{1,2}.f*q.gz",
+                            "${d}/**_R{1,2}_001.f*q", "${d}/**_R{1,2}.f*q", "${d}/**_{1,2}.f*q"], size: 2, flat: true)
+            // the same reads saved both compressed and uncompressed: use the .gz copy once
+            .map { id, r1, r2 -> [r1.name.replaceAll(/\.gz$/, ''), id, r1, r2] }
+            .groupTuple()
+            .map { _stem, ids, r1s, r2s ->
+                def i = Math.max(0, r1s.findIndexOf { f -> f.name.endsWith('.gz') })
+                if (r1s.size() > 1) {
+                    log.warn "Same reads found ${r1s.size()} times (${r1s*.name.join(', ')}); using ${r1s[i]} only."
+                }
+                [ids[i], r1s[i], r2s[i]]
+            }
             .map { id, r1, r2 -> [params.sample_name ?: sampleFromFastq(id), r1, r2] }
             .groupTuple()
-            .ifEmpty { error "No paired FASTQ files (*_R1/_R2 or *_1/_2, .fastq.gz or .fq.gz) found in ${d}" }
+            .ifEmpty { error "No paired FASTQ files (*_R1/_R2 or *_1/_2; .fastq, .fq, .fastq.gz or .fq.gz) found in ${d}" }
         def reads = pairs
         if (flag(params.run_fastp)) {
             FASTP(pairs)
@@ -105,8 +128,8 @@ workflow {
         steps << (flag(params.mark_duplicates) ? 'bwa mem + samtools markdup' : 'bwa mem (no duplicate marking)')
         tools['bwa + samtools'] = 'biocontainers bwa 0.7.17 / samtools 1.16.1'
     } else if (start == 'bam') {
-        def b = file(params.bam, checkIfExists: true)
-        def ch = b.isDirectory() ? channel.fromPath("${params.bam}/*.{bam,cram}") : channel.fromPath(params.bam)
+        def b = mainFile('BAM/CRAM', params.bam)
+        def ch = b.isDirectory() ? channel.fromPath("${b}/*.{bam,cram}") : channel.fromPath(b.toString())
         INDEX_INPUT_ALN(ch.map { f -> [(params.sample_name && !b.isDirectory()) ? params.sample_name : f.simpleName, f] }, ref_files, ref_name)
         aln = INDEX_INPUT_ALN.out.aln
         qc = qc.mix(INDEX_INPUT_ALN.out.flagstat.map { f -> [f.name.replace('.flagstat.txt', ''), f] })
@@ -150,7 +173,7 @@ workflow {
         }
     }
     if (start == 'vcf') {
-        def v = file(params.vcf, checkIfExists: true)
+        def v = mainFile('VCF', params.vcf)
         vcf = PREPARE_INPUT_VCF(channel.of([params.sample_name ?: v.simpleName, v]))
         steps << 'existing VCF'
     }
@@ -162,19 +185,23 @@ workflow {
         def extra = []
         def args = []
         if (params.vep_fasta) {
-            def f = file(params.vep_fasta, checkIfExists: true)
-            extra += [f, file("${f}.fai", checkIfExists: true)]
+            def f = mainFile('Ensembl FASTA', params.vep_fasta)
+            def fi = file("${f}.fai")
+            if (!fi.exists()) {
+                error "Ensembl FASTA: the index ${fi.name} must be next to ${f.name}."
+            }
+            extra += [f, fi]
             args << "--hgvs --fasta ${f.name}"
         }
         def plugins = []
         if (params.revel_file) {
-            def f = file(params.revel_file, checkIfExists: true)
+            def f = mainFile('REVEL scores', params.revel_file)
             extra += [f, file("${f}.tbi")]
             plugins << "--plugin REVEL,file=${f.name}"
             sources << "REVEL (${f.name})"
         }
         if (params.alphamissense_file) {
-            def f = file(params.alphamissense_file, checkIfExists: true)
+            def f = mainFile('AlphaMissense scores', params.alphamissense_file)
             extra += [f, file("${f}.tbi")]
             plugins << "--plugin AlphaMissense,file=${f.name}"
             sources << "AlphaMissense (${f.name})"
@@ -185,7 +212,7 @@ workflow {
             args << "--dir_plugins ${pd.name}" << plugins.join(' ')
         }
         if (params.clinvar_vcf) {
-            def f = file(params.clinvar_vcf, checkIfExists: true)
+            def f = mainFile('ClinVar VCF', params.clinvar_vcf)
             extra += [f, file("${f}.tbi")]
             args << "--custom file=${f.name},short_name=ClinVar,format=vcf,type=exact,coords=0,fields=CLNSIG%CLNREVSTAT%CLNDN"
             sources << "ClinVar (${f.name})"
