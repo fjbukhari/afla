@@ -111,7 +111,8 @@ def parse_mosdepth(summary, thresholds, regions):
 # ---------------------------------------------------------------- VCF
 def parse_vcf(path):
     csq_fields, variants = [], []
-    stats = {"total": 0, "pass": 0, "snv": 0, "indel": 0, "ti": 0, "tv": 0, "het": 0, "hom": 0}
+    stats = {"total": 0, "pass": 0, "snv": 0, "indel": 0, "ti": 0, "tv": 0, "het": 0, "hom": 0, "spectrum": {}}
+    comp = {"A": "T", "C": "G", "G": "C", "T": "A"}
     purines = {"A", "G"}
     with opener(path) as fh:
         for line in fh:
@@ -146,6 +147,9 @@ def parse_vcf(path):
                 stats["snv" if is_snv else "indel"] += 1
                 if is_snv:
                     stats["ti" if ((ref in purines) == (alt in purines)) else "tv"] += 1
+                    # base change on the pyrimidine strand (C>T, T>C, ...), as in mutational spectra
+                    r, a = (comp.get(ref, ref), comp.get(alt, alt)) if ref in purines else (ref, alt)
+                    stats["spectrum"][f"{r}>{a}"] = stats["spectrum"].get(f"{r}>{a}", 0) + 1
                 g = gt.replace("|", "/")
                 if g in ("0/1", "1/0"):
                     stats["het"] += 1

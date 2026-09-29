@@ -21,9 +21,9 @@ process REPORT {
     path summaries
     path meta
     output:
-    path "afla-report.html"
+    path "${params.report_name}"
     script:
     """
-    afla_report.py html --summaries ${summaries} --meta ${meta} --out afla-report.html
+    afla_report.py html --summaries ${summaries} --meta ${meta} --out ${params.report_name}
     """
 }

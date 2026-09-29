@@ -1,11 +1,13 @@
 #!/usr/bin/env nextflow
-// AFLA germline workflow: Illumina short reads (panels, exomes) -> QC -> alignment -> coverage
+// AFLA workflow: Illumina short reads (panels, exomes) -> QC -> alignment -> coverage
 // -> small-variant calling -> annotation -> interactive teaching report.
+// mode = germline (GATK HaplotypeCaller / DeepVariant) or somatic (GATK Mutect2, tumour-only or tumour/normal).
 // Education and research use only, not for clinical use.
 
 include { PREPARE_REF; BWA_INDEX; PREPARE_BED; AUTO_TARGETS } from './modules/reference'
 include { FASTP; ALIGN; INDEX_INPUT_ALN; COVERAGE } from './modules/reads'
 include { CALL_GATK; CALL_DEEPVARIANT; NORMALISE_FILTER; PREPARE_INPUT_VCF; ANNOTATE_VEP } from './modules/variants'
+include { SPLIT_TARGETS; CALL_MUTECT2; MERGE_FILTER_MUTECT2; SOMATIC_FILTER } from './modules/somatic'
 include { SUMMARISE; REPORT } from './modules/report'
 
 // "NA12877_S8_L001" -> "NA12877": drop Illumina sample-sheet number and lane, so lanes of one sample merge
@@ -31,6 +33,19 @@ def mainFile(String name, Object p) {
     return file(fixed, checkIfExists: true)
 }
 
+// Error text when no FASTQ pairs are found: say what IS in the chosen folder, to spot a wrong pick.
+def fastqHelp(Object d) {
+    def names = file(d.toString()).listFiles()?.collect { f -> f.name } ?: []
+    def hint = ''
+    if (names.any { n -> n ==~ /.*\.(fa|fasta|fna)(\.gz)?$/ }) {
+        hint = ' This looks like the REFERENCE folder: choose the folder with your sequencing reads in "FASTQ folder", and the .fa file in "Reference genome".'
+    } else if (names.any { n -> n ==~ /.*\.(bam|cram|vcf|vcf\.gz)$/ }) {
+        hint = ' This folder has BAM/CRAM or VCF files: use the "BAM / CRAM" or "VCF file" input instead.'
+    }
+    def shown = names.take(8).join(', ') + (names.size() > 8 ? ', ...' : '')
+    return "No paired FASTQ files (*_R1/_R2 or *_1/_2; .fastq, .fq, .fastq.gz or .fq.gz) found in ${d}.${hint} Files there: ${shown ?: 'none'}"
+}
+
 def jsonString(Object x) {
     if (x == null) return 'null'
     if (x instanceof Boolean || x instanceof Number) return x.toString()
@@ -52,6 +67,10 @@ workflow {
     if (flag(params.run_annotation) && !params.vep_cache) {
         error "Annotation needs the Ensembl VEP cache folder (vep_cache). Set it, or untick 'Annotate variants'."
     }
+    if (!(params.mode in ['germline', 'somatic'])) {
+        error "mode must be 'germline' or 'somatic'."
+    }
+    def somatic = params.mode == 'somatic'
     if (!(params.caller in ['gatk', 'deepvariant'])) {
         error "caller must be 'gatk' or 'deepvariant'."
     }
@@ -113,7 +132,7 @@ workflow {
             }
             .map { id, r1, r2 -> [params.sample_name ?: sampleFromFastq(id), r1, r2] }
             .groupTuple()
-            .ifEmpty { error "No paired FASTQ files (*_R1/_R2 or *_1/_2; .fastq, .fq, .fastq.gz or .fq.gz) found in ${d}" }
+            .ifEmpty { error fastqHelp(d) }
         def reads = pairs
         if (flag(params.run_fastp)) {
             FASTP(pairs)
@@ -125,7 +144,7 @@ workflow {
         ALIGN(reads, ref_files, ref_name)
         aln = ALIGN.out.aln
         qc = qc.mix(ALIGN.out.flagstat.map { f -> [f.name.replace('.flagstat.txt', ''), f] })
-        steps << (flag(params.mark_duplicates) ? 'bwa mem + samtools markdup' : 'bwa mem (no duplicate marking)')
+        steps << ((flag(params.mark_duplicates) && !flag(params.amplicon)) ? 'bwa mem + samtools markdup' : 'bwa mem (no duplicate marking)')
         tools['bwa + samtools'] = 'biocontainers bwa 0.7.17 / samtools 1.16.1'
     } else if (start == 'bam') {
         def b = mainFile('BAM/CRAM', params.bam)
@@ -155,7 +174,49 @@ workflow {
             steps << 'mosdepth coverage'
             tools.mosdepth = 'mosdepth 0.3.10'
         }
-        if (flag(params.run_calling)) {
+        if (flag(params.run_calling) && somatic) {
+            // tumour samples (everything except the named normal), each paired with the normal if one is given
+            def tumours = aln_bed.filter { s, _a, _i, _b -> s != params.normal_sample }
+            def pairs
+            if (params.normal_sample) {
+                def normal = aln.filter { s, _a, _i -> s == params.normal_sample }
+                    .ifEmpty { error "Matched normal '${params.normal_sample}' is not among the input samples." }
+                    .map { _s, a, i -> [a, i] }
+                pairs = tumours.combine(normal)
+            } else {
+                pairs = tumours.map { s, a, i, b -> [s, a, i, b, file("${projectDir}/assets/NO_NORMAL"), file("${projectDir}/assets/NO_NORMAL_IDX")] }
+            }
+            def res = []
+            def res_args = []
+            if (params.germline_resource) {
+                def f = mainFile('Germline resource', params.germline_resource)
+                res += [f, file("${f}.tbi")]
+                res_args << "--germline-resource ${f.name}"
+            }
+            if (params.panel_of_normals) {
+                def f = mainFile('Panel of normals', params.panel_of_normals)
+                res += [f, file("${f}.tbi")]
+                res_args << "--panel-of-normals ${f.name}"
+            }
+            if (!res) {
+                res = [file("${projectDir}/assets/NO_RESOURCE")]
+            }
+            // run Mutect2 on chunks of the targets in parallel, then merge and filter per sample
+            def chunks = SPLIT_TARGETS(pairs, ref_files, ref_name)
+                .map { s, a, i, c, na, ni -> [s, a, i, (c instanceof List ? c : [c]), na, ni] }
+                .transpose(by: 3)
+            CALL_MUTECT2(chunks, ref_files, ref_name, res, res_args.join(' '))
+            MERGE_FILTER_MUTECT2(CALL_MUTECT2.out.vcf.groupTuple(), ref_files, ref_name)
+            SOMATIC_FILTER(MERGE_FILTER_MUTECT2.out.vcf, ref_files, ref_name)
+            vcf = SOMATIC_FILTER.out.vcf
+            steps << (params.normal_sample ? "GATK Mutect2 (tumour vs normal ${params.normal_sample})" : 'GATK Mutect2 (tumour-only)')
+            steps << "bcftools normalise + support filter (VAF >= ${params.min_vaf}, alt reads >= ${params.min_alt_reads}, depth >= ${params.min_dp})"
+            if (flag(params.amplicon)) {
+                steps << 'amplicon mode: Mutect2 strand_bias/position labels not applied'
+            }
+            tools.gatk = 'broadinstitute/gatk:4.6.2.0'
+            tools.bcftools = 'staphb/bcftools:1.23.1'
+        } else if (flag(params.run_calling)) {
             def raw
             if (params.caller == 'deepvariant') {
                 raw = CALL_DEEPVARIANT(aln_bed, ref_files, ref_name)
@@ -237,10 +298,11 @@ workflow {
         }
         SUMMARISE(per_sample)
         def meta = [
-            title: 'AFLA germline report', workflow_version: workflow.manifest.version,
+            title: somatic ? 'AFLA somatic report' : 'AFLA germline report', mode: params.mode,
+            normal_sample: params.normal_sample, germline_resource: params.germline_resource ? file(params.germline_resource).name : null, workflow_version: workflow.manifest.version,
             date: new Date().format('yyyy-MM-dd HH:mm'), reference: params.ref ? file(params.ref).name : 'n/a',
             steps: steps, tools: tools, annotation_sources: sources, targets: targets_desc,
-            mark_duplicates: flag(params.mark_duplicates), report_max_pop_af: params.report_max_pop_af, report_min_vaf: params.report_min_vaf,
+            mark_duplicates: flag(params.mark_duplicates) && !flag(params.amplicon), amplicon: flag(params.amplicon), report_max_pop_af: params.report_max_pop_af, report_min_vaf: params.report_min_vaf,
             params: params.findAll { k, _v -> !(k in ['help', 'version', 'disable_ping']) },
         ]
         REPORT(SUMMARISE.out.collect(), channel.of(jsonString(meta)).collectFile(name: 'afla_meta.json'))

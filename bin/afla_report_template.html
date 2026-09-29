@@ -80,6 +80,9 @@ details summary{cursor:pointer;color:var(--accent)}
         <label><input type="checkbox" class="imp" value="LOW"> LOW</label>
         <label><input type="checkbox" class="imp" value="MODIFIER"> MODIFIER</label>
       </fieldset>
+      <fieldset id="somBox" hidden><legend>Somatic</legend>
+        <label><input type="checkbox" id="fSom"> somatic candidates only</label>
+      </fieldset>
       <fieldset><legend>ClinVar</legend>
         <label><input type="checkbox" id="fClin"> pathogenic / likely pathogenic only</label>
       </fieldset>
@@ -113,6 +116,7 @@ const PAGE = 200;
 const isPLP = v => /(^|[ ,/|])(pathogenic|likely pathogenic)/i.test(v.clinvar || '') && !/conflicting/i.test(v.clinvar || '');
 
 $('title').textContent = meta.title || 'AFLA germline report';
+if (meta.mode === 'somatic') $('somBox').hidden = false;
 $('subtitle').textContent = `Workflow ${meta.workflow_version || ''} · generated ${meta.date || ''} · reference ${meta.reference || ''}`;
 $('fAf').value = meta.report_max_pop_af ?? 0.01;
 $('fVaf').value = meta.report_min_vaf ?? 0;
@@ -142,8 +146,17 @@ function renderQC() {
   }
   if (st) {
     t += tile('Variants (PASS / all)', `${st.pass.toLocaleString()} / ${st.total.toLocaleString()}`, `${st.snv} SNVs, ${st.indel} indels`);
-    t += tile('Ti/Tv (PASS SNVs)', fmt(st.titv), 'coding: ~2.8–3.3; genome ~2.0', st.titv == null ? '' : (st.titv > 2.5 && st.titv < 3.6 ? 'ok' : 'mid'));
-    t += tile('Het / hom-alt', fmt(st.het_hom), '~1.5–2 outbred; lower suggests consanguinity');
+    if (!SOMATIC) t += tile('Ti/Tv (PASS SNVs)', fmt(st.titv), 'coding: ~2.8–3.3; genome ~2.0', st.titv == null ? '' : (st.titv > 2.5 && st.titv < 3.6 ? 'ok' : 'mid'));
+    if (SOMATIC && st.spectrum) {
+      const sp = Object.entries(st.spectrum).sort((a, b) => b[1] - a[1]), n = sp.reduce((x, y) => x + y[1], 0);
+      if (n) {
+        const [top, cnt] = sp[0], share = 100 * cnt / n;
+        t += tile('Main base change (PASS SNVs)', `${top} ${share.toFixed(0)}%`,
+          `${sp.slice(0, 4).map(([k, c]) => k + ' ' + (100 * c / n).toFixed(0) + '%').join(', ')}. C>T usually dominates in blood cancers; a strong excess of another change suggests artefacts`,
+          top === 'C>T' || share < 40 ? 'ok' : 'mid');
+      }
+    }
+    if (!SOMATIC) t += tile('Het / hom-alt', fmt(st.het_hom), '~1.5–2 outbred; lower suggests consanguinity');
   }
   $('tiles').innerHTML = t || '<span class="muted">No QC available (workflow started from a VCF).</span>';
   $('qcCard').hidden = !t;
@@ -156,15 +169,30 @@ function renderQC() {
   }
 }
 
+const SOMATIC = meta.mode === 'somatic';
+// Tumour-only calling cannot prove a variant is somatic; this is a teaching hint, not a call.
+function origin(v) {
+  if (/germline/.test(v.filter || '')) return 'likely germline (Mutect2)';
+  if (popaf(v) > 0.001) return 'likely germline (population)';
+  if (v.vaf != null && (v.vaf >= 0.9 || (v.vaf >= 0.4 && v.vaf <= 0.6))) return 'possible germline (VAF)';
+  return 'somatic candidate';
+}
 const COLS = [
-  ['gene', 'Gene'], ['loc', 'Variant'], ['hgvsc', 'HGVSc'], ['hgvsp', 'HGVSp'], ['consequence', 'Consequence'],
-  ['gt', 'GT'], ['vaf', 'VAF'], ['dp', 'DP'], ['popaf', 'gnomAD / max AF'], ['clinvar', 'ClinVar'],
-  ['revel', 'REVEL'], ['am', 'AlphaMissense'], ['filter', 'Filter'],
+  ['gene', 'Gene', v => `<b>${esc(v.gene)}</b>`],
+  ['loc', 'Variant', v => `${esc(v.chrom)}:${v.pos} ${esc(v.ref.slice(0,12))}&gt;${esc(v.alt.slice(0,12))}`],
+  ['hgvsc', 'HGVSc', v => esc(v.hgvsc)], ['hgvsp', 'HGVSp', v => esc(v.hgvsp)],
+  ['consequence', 'Consequence', v => esc((v.consequence||'').replace(/_/g,' ').replace(/&/g,', '))],
+  SOMATIC ? ['origin', 'Origin (hint)', v => { const o = origin(v); return `<span class="chip ${o.startsWith('somatic') ? 'p' : ''}">${o}</span>`; }]
+          : ['gt', 'GT', v => esc(v.gt)],
+  ['vaf', 'VAF', v => fmt(v.vaf)], ['dp', 'DP', v => fmt(v.dp, 0)],
+  ['popaf', 'gnomAD / max AF', v => popaf(v) < 0 ? '–' : fmt(popaf(v), 4)],
+  ['clinvar', 'ClinVar', v => clinChip(v)], ['revel', 'REVEL', v => fmt(v.revel)],
+  ['am', 'AlphaMissense', v => esc(v.am_class.replace('likely_','likely '))], ['filter', 'Filter', v => esc(v.filter)],
 ];
 $('head').innerHTML = COLS.map(([k, l]) => `<th data-k="${k}">${l}</th>`).join('');
 const popaf = v => [v.max_af, v.gnomade, v.gnomadg].filter(x => x != null).reduce((a, b) => Math.max(a, b), -1);
 const keyVal = (v, k) => k === 'loc' ? v.chrom.replace('chr','').padStart(2,'0') + ':' + String(v.pos).padStart(10,'0')
-  : k === 'popaf' ? popaf(v) : k === 'am' ? (v.am_score ?? -1) : (v[k] ?? '');
+  : k === 'popaf' ? popaf(v) : k === 'am' ? (v.am_score ?? -1) : k === 'origin' ? origin(v) : (v[k] ?? '');
 
 function applyFilters() {
   const imp = [...document.querySelectorAll('.imp:checked')].map(x => x.value);
@@ -178,6 +206,7 @@ function applyFilters() {
     if (af < 0) { if (!keepNoAf) return false; } else if (!isNaN(maxAf) && af > maxAf) return false;
     if (imp.length && S.annotated && !imp.includes(v.impact)) return false;
     if ($('fClin').checked && !isPLP(v)) return false;
+    if (SOMATIC && $('fSom').checked && !origin(v).startsWith('somatic')) return false;
     if (genes.size && !genes.has((v.gene || '').toUpperCase())) return false;
     if (txt && !JSON.stringify(v).toLowerCase().includes(txt)) return false;
     return true;
@@ -197,11 +226,8 @@ function renderTable() {
   page = Math.min(page, pages - 1);
   $('count').textContent = `${n.toLocaleString()} of ${(S.variants || []).length.toLocaleString()} variants shown`;
   $('page').textContent = `page ${page + 1} / ${pages}`;
-  $('body').innerHTML = rows.slice(page * PAGE, (page + 1) * PAGE).map((v, i) => `<tr data-i="${page * PAGE + i}">
-    <td><b>${esc(v.gene)}</b></td><td>${esc(v.chrom)}:${v.pos} ${esc(v.ref.slice(0,12))}&gt;${esc(v.alt.slice(0,12))}</td>
-    <td>${esc(v.hgvsc)}</td><td>${esc(v.hgvsp)}</td><td>${esc((v.consequence||'').replace(/_/g,' ').replace(/&/g,', '))}</td>
-    <td>${esc(v.gt)}</td><td>${fmt(v.vaf)}</td><td>${fmt(v.dp,0)}</td><td>${popaf(v) < 0 ? '–' : fmt(popaf(v), 4)}</td>
-    <td>${clinChip(v)}</td><td>${fmt(v.revel)}</td><td>${esc(v.am_class.replace('likely_','likely '))}</td><td>${esc(v.filter)}</td></tr>`).join('')
+  $('body').innerHTML = rows.slice(page * PAGE, (page + 1) * PAGE).map((v, i) =>
+    `<tr data-i="${page * PAGE + i}">${COLS.map(c => `<td>${c[2](v)}</td>`).join('')}</tr>`).join('')
     || `<tr><td colspan="${COLS.length}" class="muted">No variants match these filters.</td></tr>`;
 }
 function detail(v) {
@@ -218,7 +244,9 @@ function detail(v) {
     <a target="_blank" rel="noopener" href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr${c}:${v.pos - 25}-${v.pos + 25}">UCSC</a>
     ${v.gene ? `· <a target="_blank" rel="noopener" href="https://search.clinicalgenome.org/kb/genes?search=${encodeURIComponent(v.gene)}">ClinGen</a>` : ''}
     ${rs ? `· <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/snp/${rs}">dbSNP</a>` : ''}</p>
-    <p class="help">Interpretation (e.g. ACMG/AMP criteria) needs phenotype, inheritance, segregation and literature review. These annotations are evidence to weigh, not a classification.</p>`;
+    <p class="help">${SOMATIC
+      ? `Origin hint: <b>${origin(v)}</b>. Tumour-only calling cannot separate somatic from germline variants with certainty. Somatic interpretation (e.g. AMP/ASCO/CAP tiers) needs tumour type, variant allele fraction in context of tumour purity, and clinical evidence (e.g. CIViC, OncoKB). ClinVar classifications are mostly germline.`
+      : 'Interpretation (e.g. ACMG/AMP criteria) needs phenotype, inheritance, segregation and literature review.'} These annotations are evidence to weigh, not a classification.</p>`;
   $('detail').hidden = false; $('detail').scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 function csv() {

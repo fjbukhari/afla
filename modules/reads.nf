@@ -47,7 +47,7 @@ process ALIGN {
     def fmt = params.output_format == "bam" ? "BAM" : "CRAM"
     def t = task.cpus
     def rg = "@RG\\tID:${sample}\\tSM:${sample}\\tLB:${sample}\\tPL:ILLUMINA"
-    def dedup = (params.mark_duplicates.toString() == 'true') ?
+    def dedup = (params.mark_duplicates.toString() == 'true' && params.amplicon.toString() != 'true') ?
         "samtools fixmate -m - - | samtools sort -@ ${t} -m 1G -T tmp_sort - | samtools markdup -@ ${t} -s -f ${sample}.markdup.txt --reference ${ref_name} -O ${fmt} - ${sample}.${params.output_format}" :
         "samtools sort -@ ${t} -m 1G -T tmp_sort --reference ${ref_name} -O ${fmt} -o ${sample}.${params.output_format} -"
     """

@@ -1,9 +1,9 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$id": "https://raw.githubusercontent.com/fjbukhari/afla/main/nextflow_schema.json",
-    "title": "fjbukhari/afla",
-    "workflow_title": "AFLA germline (Illumina short reads)",
-    "description": "Germline small-variant analysis of Illumina panels and exomes: read QC, alignment, coverage, variant calling (GATK or DeepVariant), Ensembl VEP annotation and an interactive teaching report. Education and research use only, not for clinical use.",
+    "$id": "https://raw.githubusercontent.com/fjbukhari/afla/main/somatic/nextflow_schema.json",
+    "title": "fjbukhari/afla-somatic",
+    "workflow_title": "AFLA somatic (Illumina short reads)",
+    "description": "Somatic small-variant analysis of Illumina panels (e.g. myeloid or solid-tumour panels): read QC, alignment, coverage, GATK Mutect2 (tumour-only, or tumour with a matched normal), Ensembl VEP annotation and an interactive teaching report with a germline/somatic hint. Education and research use only, not for clinical use.",
     "url": "https://github.com/fjbukhari/afla",
     "type": "object",
     "definitions": {
@@ -17,7 +17,7 @@
                     "title": "FASTQ folder",
                     "type": "string",
                     "format": "directory-path",
-                    "description": "Folder with paired Illumina FASTQ files (*_R1_001 / *_R2_001, or *_1 / *_2; .fastq, .fq, .fastq.gz or .fq.gz). Sub-folders are searched too.",
+                    "description": "Folder with paired Illumina FASTQ files of the tumour sample(s), plus the matched normal if you have one (*_R1_001 / *_R2_001, or *_1 / *_2; .fastq, .fq, .fastq.gz or .fq.gz). Sub-folders are searched too.",
                     "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. If the same reads exist both compressed and uncompressed, the .gz copy is used once. Files are read where they are; nothing is copied."
                 },
                 "bam": {
@@ -37,6 +37,12 @@
                     "title": "Sample name (optional)",
                     "type": "string",
                     "description": "Overrides the name taken from the file names. With a FASTQ folder, ALL files are then treated as one sample."
+                },
+                "normal_sample": {
+                    "title": "Matched normal sample name (optional)",
+                    "type": "string",
+                    "description": "If the input folder also contains the patient's normal (e.g. blood/saliva) sample, give its sample name here (e.g. PATIENT1-N). Every other sample is then called against it. Leave empty for tumour-only.",
+                    "help_text": "The name is taken from the FASTQ file names without the _S1_L001_R1_001 part. With a matched normal, inherited (germline) variants are removed much more reliably than in tumour-only mode."
                 }
             }
         },
@@ -91,7 +97,7 @@
                     "title": "Amplicon panel",
                     "type": "boolean",
                     "default": false,
-                    "description": "Tick for amplicon (PCR-based) panels, e.g. TruSight Myeloid, AmpliSeq, QIAseq targeted DNA. Duplicate marking is then switched off, because every read of an amplicon starts at the same place by design."
+                    "description": "Tick for amplicon (PCR-based) panels, e.g. TruSight Myeloid, AmpliSeq, QIAseq targeted DNA. Duplicate marking is then switched off, because every read of an amplicon starts at the same place by design. In somatic mode, Mutect2's strand_bias and position labels are also not applied, because amplicon reads come from one strand and start at the primers."
                 },
                 "run_fastp": {
                     "title": "1. Read QC and trimming (fastp)",
@@ -112,37 +118,10 @@
                     "description": "Mean depth and % of target bases at 10x/20x/30x/50x/100x; lists poorly covered regions."
                 },
                 "run_calling": {
-                    "title": "4. Variant calling",
+                    "title": "4. Somatic variant calling (GATK Mutect2)",
                     "type": "boolean",
                     "default": true,
-                    "description": "Turn off to stop after alignment and coverage."
-                },
-                "caller": {
-                    "title": "Variant caller",
-                    "type": "string",
-                    "default": "gatk",
-                    "enum": [
-                        "gatk",
-                        "deepvariant"
-                    ],
-                    "description": "gatk = GATK HaplotypeCaller (CPU, container already on this laptop). deepvariant = Google DeepVariant (uses the GPU; first use downloads a large container).",
-                    "help_text": "Both are germline callers: they expect variants at ~50% or ~100% of reads. They are not suitable for low-frequency somatic variants."
-                },
-                "deepvariant_model": {
-                    "title": "DeepVariant model",
-                    "type": "string",
-                    "default": "WES",
-                    "enum": [
-                        "WES",
-                        "WGS"
-                    ],
-                    "description": "WES for exomes and capture panels, WGS for whole genomes."
-                },
-                "use_gpu": {
-                    "title": "Use the NVIDIA GPU (DeepVariant)",
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Uses the GPU version of DeepVariant. Turn off if no NVIDIA GPU is available."
+                    "description": "Mutect2 finds low-frequency variants (down to a few %) and FilterMutectCalls labels artefacts. Turn off to stop after alignment and coverage."
                 },
                 "run_annotation": {
                     "title": "5. Annotate variants (Ensembl VEP)",
@@ -159,31 +138,31 @@
             }
         },
         "variant_filter": {
-            "title": "Variant quality filter",
+            "title": "Somatic call filter",
             "type": "object",
             "fa_icon": "fas fa-filter",
-            "description": "Calls failing these are kept in the VCF but labelled LowQual (the report hides them by default).",
+            "description": "Calls below these minimums are kept in the VCF but labelled LowSupport (the report hides them by default).",
             "properties": {
-                "min_qual": {
-                    "title": "Minimum QUAL",
+                "min_vaf": {
+                    "title": "Minimum variant allele fraction (VAF)",
                     "type": "number",
-                    "default": 30,
+                    "default": 0.02,
                     "minimum": 0,
-                    "description": "Variant call confidence (Phred scale)."
+                    "maximum": 1,
+                    "description": "Fraction of reads carrying the variant. 0.02 = 2%. Lower values need very deep, clean data."
+                },
+                "min_alt_reads": {
+                    "title": "Minimum reads supporting the variant",
+                    "type": "integer",
+                    "default": 5,
+                    "minimum": 1
                 },
                 "min_dp": {
                     "title": "Minimum read depth",
                     "type": "integer",
-                    "default": 10,
+                    "default": 50,
                     "minimum": 0,
-                    "description": "Reads covering the position."
-                },
-                "min_gq": {
-                    "title": "Minimum genotype quality (GQ)",
-                    "type": "integer",
-                    "default": 20,
-                    "minimum": 0,
-                    "description": "Confidence in the genotype (0/1 vs 1/1)."
+                    "description": "Total reads at the position."
                 }
             }
         },
@@ -255,18 +234,18 @@
                 "report_max_pop_af": {
                     "title": "Report: default maximum population frequency",
                     "type": "number",
-                    "default": 0.01,
+                    "default": 0.001,
                     "minimum": 0,
                     "maximum": 1,
-                    "description": "Starting value of the 'rare variant' filter in the report (adjustable there)."
+                    "description": "Starting value of the population-frequency filter in the report. Variants more common than this in gnomAD are most likely inherited, not tumour-specific."
                 },
                 "report_min_vaf": {
                     "title": "Report: default minimum VAF",
                     "type": "number",
-                    "default": 0.2,
+                    "default": 0.02,
                     "minimum": 0,
                     "maximum": 1,
-                    "description": "Starting value of the minimum variant allele fraction filter in the report. Germline heterozygous variants sit near 0.5; lower values are often artefacts or somatic/mosaic changes (adjustable in the report)."
+                    "description": "Starting value of the minimum VAF filter in the report (adjustable there)."
                 },
                 "threads": {
                     "title": "CPU threads",
@@ -274,6 +253,14 @@
                     "default": 12,
                     "minimum": 1,
                     "description": "Maximum CPU threads for the heavy steps (alignment, calling, annotation)."
+                },
+                "mutect2_shards": {
+                    "title": "Mutect2 parallel chunks",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 24,
+                    "description": "Number of Mutect2 jobs run side by side on chunks of the targets with equal work. 1 = one job using all threads (best on this laptop for panels: 6 chunks gave identical calls but were not faster). Try 4-6 for exomes. Each chunk uses 2 threads and 8 GB."
                 }
             }
         },
@@ -300,6 +287,26 @@
                     "description": "Not used."
                 }
             }
+        },
+        "somatic_resources": {
+            "title": "Somatic resources (optional)",
+            "type": "object",
+            "fa_icon": "fas fa-database",
+            "description": "Improve tumour-only calling. Both are optional; without them, common population variants are flagged in the report using gnomAD frequencies from VEP.",
+            "properties": {
+                "germline_resource": {
+                    "title": "Germline resource (gnomAD af-only VCF)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "e.g. af-only-gnomad.hg38.vcf.gz with .tbi (GATK resource bundle, ~3 GB). Helps Mutect2 recognise inherited variants."
+                },
+                "panel_of_normals": {
+                    "title": "Panel of normals (VCF)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Artefacts seen in normal samples sequenced with the same panel/lab (made with GATK CreateSomaticPanelOfNormals). Must match your assay; the public 1000G PoN suits WGS/WES, not amplicon panels."
+                }
+            }
         }
     },
     "allOf": [
@@ -314,6 +321,9 @@
         },
         {
             "$ref": "#/definitions/variant_filter"
+        },
+        {
+            "$ref": "#/definitions/somatic_resources"
         },
         {
             "$ref": "#/definitions/annotation"
@@ -341,7 +351,7 @@
             "cpus": 4,
             "memory": "16GB"
         },
-        "run_time": "Panel: 15-30 minutes. Exome: about 2-4 hours (GATK) or less with DeepVariant on the GPU.",
+        "run_time": "Myeloid-size panel: about 20-30 minutes.",
         "arm_support": false
     }
 }
