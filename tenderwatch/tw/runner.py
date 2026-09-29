@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from . import DATA_DIR, db
 from .dedup import find_duplicates
+from .places import city_of, institute_of
 from .score import Scorer
 from .settings import load_settings, load_sources
 
@@ -57,6 +58,8 @@ def build_feed(con, include_irrelevant=False):
         for k in ("categories", "matched", "excluded"):
             t[k] = json.loads(t[k] or "[]")
         t.pop("raw", None)
+        t["city"] = city_of(t.get("location"), t.get("org"), t.get("title"))
+        t["institute"] = institute_of(t.get("org"))
         tenders.append(t)
     notes = {r["id"]: dict(r) for r in con.execute("SELECT * FROM notes")}
     sources = []

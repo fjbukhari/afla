@@ -90,3 +90,15 @@ def test_link_list_pages():
     assert recs[0]["doc_url"] == "https://uni.example.edu.pk/uploads/nit-lab-chemicals.pdf"
     assert recs[0]["published"] == "2026-09-28" and recs[0]["closing"] == "2026-10-14"
     assert "PCR kits" in recs[1]["title"]
+
+
+def test_city_and_institute():
+    from tw.places import city_of, institute_of
+    assert city_of("", "COMSATS University Islamabad (CUI) - Lahore Campus — COMSATS", "") == "Lahore"
+    assert city_of("Karachi central", "Sindh Govt. Hospital", "") == "Karachi"
+    assert city_of("", "Pakistan Kidney Liver Institute", "PROCUREMENT OF ICU VENTILATORS") == "Lahore"
+    assert city_of("", "Pakistan Kidney Liver Institute", "X-RAY FILMS FOR PKLI & RC RAWALPINDI") == "Rawalpindi"
+    assert city_of("", "Regional Office (National Bank of Pakistan)", "UPS at NBP PCSIR LAB, D.I. Khan") == "Dera Ismail Khan"
+    assert city_of("", "Ministry of Health", "Supply of ICT equipment") == ""
+    assert institute_of("NUML — National University of Modern Languages") == "NUML"
+    assert institute_of("FDE (FDE)") == "FDE"

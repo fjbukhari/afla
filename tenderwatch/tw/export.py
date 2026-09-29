@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from . import DATA_DIR, db
+from .places import city_of, institute_of
 from .runner import build_feed
 
 WEB = Path(__file__).parent / "web" / "index.html"
@@ -32,12 +33,14 @@ def export_csv(path=None, relevant_only=True):
     rows = [dict(r) for r in con.execute(q + " ORDER BY t.closing")]
     con.close()
     out = Path(path or DATA_DIR / "tenders.csv")
-    cols = ["closing", "title", "org", "region", "source_name", "ref", "published", "score", "categories",
+    cols = ["closing", "title", "institute", "city", "region", "source_name", "ref", "published", "score", "categories",
             "status", "note", "url", "doc_url", "first_seen"]
     with open(out, "w", newline="", encoding="utf-8-sig") as f:  # utf-8-sig so Excel reads Urdu/Unicode
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         for r in rows:
             r["categories"] = ", ".join(json.loads(r["categories"] or "[]"))
+            r["institute"] = institute_of(r["org"])
+            r["city"] = city_of(r["location"], r["org"], r["title"])
             w.writerow(r)
     return out

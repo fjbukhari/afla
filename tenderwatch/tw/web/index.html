@@ -87,6 +87,20 @@ input[type=checkbox]{accent-color:var(--seal);width:15px;height:15px;margin:0;cu
 .chip{text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--ink-2)}
 .chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .chip .c{font-family:var(--mono);opacity:.7;margin-left:4px}
+.ms{position:relative}
+.ms-btn{width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:7px 28px 7px 9px;cursor:pointer;position:relative;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.ms-btn::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;border-right:2px solid var(--ink-3);border-bottom:2px solid var(--ink-3);transform:translateY(-70%) rotate(45deg)}
+.ms-btn.on{border-color:var(--seal);background:var(--seal-soft)}
+.ms-panel{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);padding:8px;display:flex;flex-direction:column;gap:6px}
+.ms-panel input[type=text]{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:6px 8px;font-size:13px}
+.ms-acts{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--ink-3)}
+.ms-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;overscroll-behavior:contain}
+.ms-opt{display:flex;gap:8px;align-items:flex-start;padding:4px;border-radius:3px;cursor:pointer;font-size:12.5px;line-height:1.35}
+.ms-opt:hover{background:var(--sunk)}
+.ms-opt input{margin-top:2px;flex:none}
+.ms-opt span{flex:1;min-width:0;overflow-wrap:anywhere}
+.ms-opt em{font:11px var(--mono);font-style:normal;color:var(--ink-3)}
+.ms-empty{font-size:12px;color:var(--ink-3);padding:6px 4px}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);cursor:pointer}
 .check input{margin-top:3px}
 .range{display:flex;align-items:center;gap:8px}
@@ -202,9 +216,11 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px
     <aside class="filters" aria-label="Filters">
       <div class="fgroup">
         <label class="lab" for="q">Search</label>
-        <input type="search" id="q" placeholder="e.g. PCR, reagents, NIH">
-        <div class="hint">All words must appear in the title, buyer or reference.</div>
+        <input type="search" id="q" placeholder="e.g. PCR, reagents, NIH, Karachi">
+        <div class="hint">All words must appear in the title, institute, city or reference.</div>
       </div>
+      <div class="fgroup"><span class="lab" id="msInstL">Institute / buyer</span><div class="ms" id="msInst"></div></div>
+      <div class="fgroup"><span class="lab" id="msCityL">City</span><div class="ms" id="msCity"></div></div>
       <div class="fgroup"><span class="lab">Category</span><div class="chips" id="catChips"></div></div>
       <div class="fgroup"><span class="lab">Region</span><div class="chips" id="regChips"></div></div>
       <div class="fgroup">
@@ -328,8 +344,10 @@ const store = {
 const STATUS = {interested:'Interested', bidding:'Preparing bid', submitted:'Bid submitted', won:'Won', lost:'Lost', ignored:'Ignored'};
 let FEED = null, LIVE = false, NOTES = {}, SHOWN = 60, SEL = new Set(), VIEW = store.get('view', 'cards'), TSORT = store.get('tsort', null);
 const today = new Date(); today.setHours(0,0,0,0);
-const DEF = {q:'', cats:[], regions:[], source:'', closing:'open', seen:'any', status:'active', thr:null, coreOnly:false, showDups:false, sort:'closing'};
+const DEF = {q:'', insts:[], cities:[], cats:[], regions:[], source:'', closing:'open', seen:'any', status:'active', thr:null, coreOnly:false, showDups:false, sort:'closing'};
 let F = Object.assign({}, DEF, store.get('filters', {}));
+for (const k of ['insts','cities','cats','regions']) if (!Array.isArray(F[k])) F[k] = [];
+let msInst, msCity;
 
 function toast(m, ms){ const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms || 2800); }
 async function copy(text){ try { await navigator.clipboard.writeText(text); toast('Copied'); return true; } catch(e){ toast('Copy was blocked. Select the text and press Ctrl+C.'); return false; } }
@@ -350,11 +368,14 @@ async function load(){
   if (!FEED) { $('#updated').textContent = 'No data'; $('#view').innerHTML = '<div class="empty">No tender data yet. On the Tender Watch PC run <code>python -m tw run</code>, then reload.</div>'; return; }
   LIVE = !!FEED.live;
   NOTES = LIVE ? (FEED.notes || {}) : Object.assign({}, FEED.notes || {}, store.get('notes', {}));
-  for (const t of FEED.tenders) { t._q = (t.title + ' ' + t.org + ' ' + (t.ref || '') + ' ' + t.source_name).toLowerCase(); }
+  for (const t of FEED.tenders) prep(t);
   if (F.thr == null) F.thr = FEED.threshold;
   init(); render();
 }
 
+function prep(t){ t.city = t.city || ''; t.institute = t.institute || t.org || ''; t._q = [t.title, t.org, t.ref, t.source_name, t.city, t.location].join(' ').toLowerCase(); }
+const CITY_NONE = 'City not stated';
+function cityOf(t){ return t.city || CITY_NONE; }
 function daysLeft(t){ if (!t.closing) return null; return Math.round((new Date(t.closing + 'T00:00:00') - today) / 864e5); }
 function ageDays(t){ const d = new Date((t.first_seen || '').replace(' ', 'T')); return isNaN(d) ? 999 : (Date.now() - d) / 864e5; }
 function fmtDate(s){ if (!s) return '—'; const d = new Date(s + 'T00:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
@@ -369,6 +390,8 @@ function filtered(ignore){
     if (!relevant(t)) return false;
     if (!F.showDups && t.dup_of) return false;
     if (F.coreOnly && !t.core) return false;
+    if (ignore !== 'insts' && F.insts.length && !F.insts.includes(t.institute)) return false;
+    if (ignore !== 'cities' && F.cities.length && !F.cities.includes(cityOf(t))) return false;
     if (ignore !== 'cats' && F.cats.length && !F.cats.some(c => t.categories.includes(c))) return false;
     if (ignore !== 'regions' && F.regions.length && !F.regions.includes(t.region)) return false;
     if (F.source && t.source !== F.source) return false;
@@ -412,7 +435,9 @@ function init(){
   }
   $('#thr').value = F.thr; $('#thr').oninput = () => { F.thr = +$('#thr').value; SHOWN = 60; render(); };
   for (const id of ['coreOnly','showDups']) { const el = $('#' + id); el.checked = F[id]; el.onchange = () => { F[id] = el.checked; render(); }; }
-  $('#reset').onclick = () => { F = Object.assign({}, DEF, {thr: FEED.threshold}); for (const id of ['q','source','closing','seen','status','sort']) $('#' + id).value = F[id]; $('#thr').value = F.thr; $('#coreOnly').checked = $('#showDups').checked = false; render(); };
+  $('#reset').onclick = () => { F = Object.assign({}, DEF, {thr: FEED.threshold}); for (const id of ['q','source','closing','seen','status','sort']) $('#' + id).value = F[id]; $('#thr').value = F.thr; $('#coreOnly').checked = $('#showDups').checked = false; SHOWN = 60; render(); };
+  msInst = makeMulti($('#msInst'), 'Institutes', 'insts');
+  msCity = makeMulti($('#msCity'), 'Cities', 'cities');
   $('#catChips').onclick = e => chipToggle(e, 'cats');
   $('#regChips').onclick = e => chipToggle(e, 'regions');
   $('#vCards').onclick = () => { VIEW = 'cards'; store.set('view', VIEW); render(); };
@@ -432,6 +457,40 @@ function init(){
   $('#runBtn').onclick = startRun;
   $('#logBtn').onclick = showLog;
   renderSources();
+}
+function makeMulti(el, label, key){
+  el.innerHTML = `<button type="button" class="ms-btn" aria-haspopup="listbox" aria-expanded="false"></button>
+    <div class="ms-panel" hidden><input type="text" placeholder="Type to find…" aria-label="Find ${label}">
+    <div class="ms-acts"><span class="ms-n"></span><span><button type="button" class="linkbtn" data-a="all">Tick all shown</button> · <button type="button" class="linkbtn" data-a="none">Clear</button></span></div>
+    <div class="ms-list" role="listbox" aria-multiselectable="true"></div></div>`;
+  const btn = el.querySelector('.ms-btn'), panel = el.querySelector('.ms-panel'), inp = panel.querySelector('input'), list = panel.querySelector('.ms-list');
+  let opts = [];
+  const visible = () => { const q = inp.value.trim().toLowerCase(); return opts.filter(o => !q || o.v.toLowerCase().includes(q)); };
+  const paint = () => {
+    const sel = F[key];
+    btn.textContent = sel.length === 0 ? 'All ' + label.toLowerCase() : sel.length === 1 ? sel[0] : sel.length + ' ' + label.toLowerCase() + ' chosen';
+    btn.classList.toggle('on', sel.length > 0);
+    if (panel.hidden) return;
+    const vis = visible();
+    panel.querySelector('.ms-n').textContent = vis.length + ' of ' + opts.length;
+    list.innerHTML = vis.length ? vis.slice(0, 400).map(o => `<label class="ms-opt"><input type="checkbox" value="${esc(o.v)}"${sel.includes(o.v) ? ' checked' : ''}><span>${esc(o.v)}</span><em>${o.n}</em></label>`).join('') : '<div class="ms-empty">No match</div>';
+  };
+  btn.onclick = () => { panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', !panel.hidden); if (!panel.hidden) { inp.value = ''; paint(); inp.focus(); } };
+  inp.oninput = paint;
+  inp.onkeydown = e => { if (e.key === 'Escape') { panel.hidden = true; btn.focus(); } };
+  list.onchange = e => { const v = e.target.value; F[key] = e.target.checked ? F[key].concat(v) : F[key].filter(x => x !== v); SHOWN = 60; render(); };
+  panel.querySelector('.ms-acts').onclick = e => {
+    const a = e.target.dataset.a; if (!a) return;
+    const vis = visible().map(o => o.v);
+    F[key] = a === 'all' ? [...new Set(F[key].concat(vis))] : (inp.value.trim() ? F[key].filter(x => !vis.includes(x)) : []);
+    SHOWN = 60; render();
+  };
+  document.addEventListener('click', e => { if (!el.contains(e.target) && !panel.hidden) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
+  return { set(o){ opts = o; paint(); } };
+}
+function optionCounts(list, fn){
+  const m = new Map(); for (const t of list) { const v = fn(t); if (v) m.set(v, (m.get(v) || 0) + 1); }
+  return [...m.entries()].map(([v, n]) => ({v, n}));
 }
 function chipToggle(e, key){ const b = e.target.closest('.chip'); if (!b) return; const v = b.dataset.v; F[key] = F[key].includes(v) ? F[key].filter(x => x !== v) : F[key].concat(v); SHOWN = 60; render(); }
 
@@ -493,7 +552,8 @@ const COLS = [
   {k:'closing', l:'Closing', sort:t => t.closing || '9999', td:t => `<td class="mono">${fmtDate(t.closing)}</td>`},
   {k:'days', l:'Days', sort:t => daysLeft(t) ?? 9e9, td:t => `<td class="mono">${daysLeft(t) ?? '—'}</td>`},
   {k:'title', l:'Tender', sort:t => t.title.toLowerCase(), td:t => `<td class="tt"><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>${t.core ? ' <span class="tag core">CORE</span>' : ''}</td>`},
-  {k:'org', l:'Buyer', sort:t => (t.org || '').toLowerCase(), td:t => `<td class="oo">${esc(t.org)}</td>`},
+  {k:'inst', l:'Institute', sort:t => (t.institute || '').toLowerCase(), td:t => `<td class="oo">${esc(t.institute)}</td>`},
+  {k:'city', l:'City', sort:t => t.city || '~', td:t => `<td>${esc(t.city)}</td>`},
   {k:'region', l:'Region', sort:t => t.region, td:t => `<td>${esc(t.region)}</td>`},
   {k:'source', l:'Portal', sort:t => t.source_name, td:t => `<td>${esc(t.source_name)}</td>`},
   {k:'ref', l:'Reference', sort:t => t.ref || '', td:t => `<td class="mono">${esc(t.ref)}</td>`},
@@ -505,6 +565,10 @@ function render(){
   store.set('filters', F);
   $('#thrOut').textContent = F.thr;
   const base = filtered('cats'), baseR = filtered('regions');
+  // selected entries stay listed even when other filters leave them with 0 tenders
+  const keep = (opts, sel) => { for (const v of sel) if (!opts.some(o => o.v === v)) opts.push({v, n: 0}); return opts; };
+  msInst.set(keep(optionCounts(filtered('insts'), t => t.institute), F.insts).sort((a, b) => a.v.localeCompare(b.v)));
+  msCity.set(keep(optionCounts(filtered('cities'), cityOf), F.cities).sort((a, b) => (a.v === CITY_NONE) - (b.v === CITY_NONE) || b.n - a.n || a.v.localeCompare(b.v)));
   $('#catChips').innerHTML = Object.keys(FEED.categories).map(c => `<button type="button" class="chip" data-v="${esc(c)}" aria-pressed="${F.cats.includes(c)}">${esc(c)}<span class="c">${base.filter(t => t.categories.includes(c)).length}</span></button>`).join('');
   const regions = [...new Set(FEED.tenders.map(t => t.region).filter(Boolean))].sort();
   $('#regChips').innerHTML = regions.map(r => `<button type="button" class="chip" data-v="${esc(r)}" aria-pressed="${F.regions.includes(r)}">${esc(r)}<span class="c">${baseR.filter(t => t.region === r).length}</span></button>`).join('');
@@ -538,7 +602,7 @@ function cards(list){
       <div class="due"><span class="d">${fmtDate(t.closing)}</span>${duePill(t)}</div>
       <div class="body">
         <a class="title" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
-        <div class="org">${esc(t.org || '—')}${t.location ? ' · ' + esc(t.location) : ''}</div>
+        <div class="org">${esc(t.institute || '—')}${t.city ? ' · <b>' + esc(t.city) + '</b>' : ''}${t.location && t.location.toLowerCase() !== t.city.toLowerCase() ? ' · ' + esc(t.location) : ''}</div>
         <div class="tags">${t.core ? '<span class="tag core">CORE</span>' : ''}${ageDays(t) <= 1 ? '<span class="tag new">NEW</span>' : ''}${t.categories.slice(0, 2).map(c => `<span class="tag">${esc(c)}</span>`).join('')}<span class="tag">${esc(t.region)}</span><span class="tag">${esc(t.source_name)}</span>${dups.length ? `<span class="tag dup" title="${esc(dups.map(d => d.source_name).join(', '))}">also on ${esc([...new Set(dups.map(d => d.source_name))].join(', '))}</span>` : ''}</div>
         ${t.ref ? `<div class="ref">${esc(t.ref)}</div>` : ''}
         <div class="why">Matched: ${esc(t.matched.slice(0, 6).join(', '))} · score ${t.score}${t.excluded.length ? ' · minus ' + esc(t.excluded.join(', ')) : ''}</div>
@@ -606,14 +670,14 @@ function askName(then, key){
 function pickList(){ return SEL.size ? current.filter(t => SEL.has(t.id)).concat(FEED.tenders.filter(t => SEL.has(t.id) && !current.includes(t))) : current; }
 function tsv(list){
   const cell = s => String(s ?? '').replace(/[\t\r\n]+/g, ' ');
-  return [['Closing','Days left','Tender','Buyer','Region','Portal','Reference','Categories','Status','Note','Link']].concat(list.map(t => [t.closing || '', daysLeft(t) ?? '', t.title, t.org, t.region, t.source_name, t.ref, t.categories.join(', '), STATUS[statusOf(t)] || '', (NOTES[t.id] || {}).note || '', t.url])).map(r => r.map(cell).join('\t')).join('\n');
+  return [['Closing','Days left','Tender','Institute','City','Region','Portal','Reference','Categories','Status','Note','Link']].concat(list.map(t => [t.closing || '', daysLeft(t) ?? '', t.title, t.institute, t.city, t.region, t.source_name, t.ref, t.categories.join(', '), STATUS[statusOf(t)] || '', (NOTES[t.id] || {}).note || '', t.url])).map(r => r.map(cell).join('\t')).join('\n');
 }
 function openShare(){
   const list = pickList().slice(0, 150);
   $('#shareWhat').textContent = `${list.length} tender${list.length === 1 ? '' : 's'}${SEL.size ? ' selected' : ' in the current view'}${pickList().length > 150 ? ' (first 150)' : ''}.`;
   const team = FEED.team || [];
   $('#rcpts').innerHTML = team.map((m, i) => `<label><input type="checkbox" data-i="${i}" checked> ${esc(m.name)} <span class="hint">${esc(m.email)}</span></label>`).join('');
-  $('#shareText').value = `Tenders for review (${list.length})\n\n` + list.map((t, i) => `${i + 1}. ${t.title}\n   ${t.org}${t.region ? ' · ' + t.region : ''} · closes ${fmtDate(t.closing)}${t.ref ? ' · ref ' + t.ref : ''}\n   ${t.url}`).join('\n\n');
+  $('#shareText').value = `Tenders for review (${list.length})\n\n` + list.map((t, i) => `${i + 1}. ${t.title}\n   ${t.institute}${t.city ? ', ' + t.city : ''}${t.region ? ' · ' + t.region : ''} · closes ${fmtDate(t.closing)}${t.ref ? ' · ref ' + t.ref : ''}\n   ${t.url}`).join('\n\n');
   const upd = () => {
     const to = [...$('#rcpts').querySelectorAll('input:checked')].map(i => team[+i.dataset.i].email).join(',');
     const body = $('#shareText').value;
@@ -639,7 +703,7 @@ async function pollRun(){
     if (j.running) { setTimeout(pollRun, 5000); return; }
   } catch(e){}
   $('#runBtn').disabled = false; $('#runBtn').textContent = 'Check portals now';
-  const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) { FEED = await r.json(); LIVE = true; NOTES = FEED.notes || {}; for (const t of FEED.tenders) t._q = (t.title + ' ' + t.org + ' ' + (t.ref || '') + ' ' + t.source_name).toLowerCase(); $('#updated').textContent = 'Updated just now'; renderSources(); render(); toast('Portals checked'); }
+  const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) { FEED = await r.json(); LIVE = true; NOTES = FEED.notes || {}; for (const t of FEED.tenders) prep(t); $('#updated').textContent = 'Updated just now'; renderSources(); render(); toast('Portals checked'); }
 }
 async function showLog(){
   let log = '';
