@@ -90,6 +90,11 @@ def cmd_digest(a):
     send(a.dry_run)
 
 
+def cmd_push(a):
+    from .push import push
+    push()
+
+
 def cmd_rescore(a):
     from .runner import mark_duplicates, write_feed
     from .score import Scorer
@@ -168,6 +173,7 @@ def main(argv=None):
     s = sub.add_parser("digest", help="email new relevant tenders (see settings.yaml)")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(f=cmd_digest)
+    sub.add_parser("push", help="send this PC's tenders to the website tender portal").set_defaults(f=cmd_push)
     sub.add_parser("rescore", help="re-apply config/rules.yaml to stored tenders").set_defaults(f=cmd_rescore)
     s = sub.add_parser("import-old", help="import data/tenders.json from the first Tender Watch")
     s.add_argument("path")

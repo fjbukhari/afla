@@ -321,6 +321,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px
     <div class="acts">
       <button class="btn" id="shareClose" type="button">Close</button>
       <button class="btn" id="shareCopy" type="button">Copy text</button>
+      <button class="btn primary" id="shareSend" type="button" hidden>Send by email</button>
       <a class="btn primary" id="shareMail" href="#" target="_blank" rel="noopener" style="text-decoration:none">Open in email</a>
     </div>
   </div>
@@ -344,6 +345,7 @@ const store = {
   get(k, d){ try { const v = localStorage.getItem('tw2.' + k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem('tw2.' + k, JSON.stringify(v)); } catch(e){} }
 };
+const API = Object.assign({feed: 'api/feed', note: 'api/note', run: 'api/run', runStatus: 'api/run', email: ''}, window.TW_API || {});
 const STATUS = {interested:'Interested', bidding:'Preparing bid', submitted:'Bid submitted', won:'Won', lost:'Lost', ignored:'Ignored'};
 let FEED = null, LIVE = false, NOTES = {}, SHOWN = 60, SEL = new Set(), VIEW = store.get('view', 'cards'), TSORT = store.get('tsort', null);
 const today = new Date(); today.setHours(0,0,0,0);
@@ -366,7 +368,7 @@ applyTheme();
 async function load(){
   if (window.TW_FEED) { FEED = window.TW_FEED; }
   else {
-    try { const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) FEED = await r.json(); } catch(e){}
+    try { const r = await fetch(API.feed, {cache:'no-store'}); if (r.ok) FEED = await r.json(); } catch(e){}
   }
   if (!FEED) { $('#updated').textContent = 'No data'; $('#view').innerHTML = '<div class="empty">No tender data yet. On the Tender Watch PC run <code>python -m tw run</code>, then reload.</div>'; return; }
   LIVE = !!FEED.live;
@@ -377,7 +379,7 @@ async function load(){
 }
 
 function prep(t){ t.city = t.city || ''; t.institute = t.institute || t.org || ''; t.items = t.items || []; t._q = [t.title, t.org, t.ref, t.source_name, t.city, t.location, t.items.join(' ')].join(' ').toLowerCase(); }
-function catLink(t){ if (!FEED.catalogue_url) return ''; const u = new URL(FEED.catalogue_url); u.searchParams.set('staff', '1'); u.searchParams.set('tab', 'match'); u.searchParams.set('tender', t.id); u.searchParams.set('q', (t.items.length ? t.items : [t.title]).slice(0, 60).join('\n').slice(0, 6000)); return u.toString(); }
+function catLink(t){ if (!FEED.catalogue_url) return ''; const u = new URL(FEED.catalogue_url, location.href); u.searchParams.set('staff', '1'); u.searchParams.set('tab', 'match'); u.searchParams.set('tender', t.id); u.searchParams.set('q', (t.items.length ? t.items : [t.title]).slice(0, 60).join('\n').slice(0, 6000)); return u.toString(); }
 const CITY_NONE = 'City not stated';
 function cityOf(t){ return t.city || CITY_NONE; }
 function daysLeft(t){ if (!t.closing) return null; return Math.round((new Date(t.closing + 'T00:00:00') - today) / 864e5); }
@@ -455,6 +457,7 @@ function init(){
   $('#shareBtn').onclick = openShare;
   $('#shareClose').onclick = () => $('#shareScrim').hidden = true;
   $('#shareCopy').onclick = () => copy($('#shareText').value);
+  $('#shareSend').onclick = sendShare;
   $('#infoClose').onclick = () => $('#infoScrim').hidden = true;
   for (const s of ['#shareScrim','#infoScrim']) $(s).onclick = e => { if (e.target === $(s)) $(s).hidden = true; };
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#shareScrim').hidden = true; $('#infoScrim').hidden = true; } });
@@ -654,7 +657,7 @@ async function setNote(ids, patch){
   for (const id of ids) NOTES[id] = Object.assign({}, NOTES[id] || {}, patch, {by: who()});
   if (LIVE) {
     try {
-      const r = await fetch('api/note', {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: JSON.stringify(Object.assign({ids, by: who()}, patch))});
+      const r = await fetch(API.note, {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: JSON.stringify(Object.assign({ids, by: who()}, patch))});
       if (r.status === 403) { toast('Saving needs the team key (ask whoever runs Tender Watch).'); askName(() => setNote(ids, patch), true); return; }
       if (!r.ok) throw new Error();
     } catch(e){ toast('Could not save. Is Tender Watch still running?'); return; }
@@ -690,13 +693,34 @@ function openShare(){
     $('#shareMail').href = 'mailto:' + encodeURIComponent(to).replace(/%2C/g, ',') + '?subject=' + encodeURIComponent(`Tenders for review (${list.length})`) + '&body=' + encodeURIComponent(body.length > 1800 ? body.slice(0, 1800) + '\n…(list shortened; paste the full list from Tender Watch)' : body);
   };
   $('#rcpts').onchange = upd; $('#shareText').oninput = upd; upd();
+  const serverMail = LIVE && FEED.can_email && API.email;
+  $('#shareSend').hidden = !serverMail;
+  $('#shareMail').className = serverMail ? 'btn' : 'btn primary';
+  $('#shareSend').dataset.ids = JSON.stringify(list.map(t => t.id));
   $('#shareScrim').hidden = false;
+}
+
+async function sendShare(){
+  const team = FEED.team || [];
+  const to = [...$('#rcpts').querySelectorAll('input:checked')].map(i => team[+i.dataset.i].email);
+  if (!to.length) { toast('Tick at least one person to send to.'); return; }
+  const ids = JSON.parse($('#shareSend').dataset.ids || '[]');
+  $('#shareSend').disabled = true;
+  try {
+    const r = await fetch(API.email, {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')},
+      body: JSON.stringify({ids, to, by: who(), message: '', subject: `Tenders for review (${ids.length})`})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    toast(`Sent ${ids.length} tender${ids.length === 1 ? '' : 's'} to ${to.length} ${to.length === 1 ? 'person' : 'people'}`);
+    $('#shareScrim').hidden = true;
+  } catch(e){ toast('Could not send: ' + e.message); }
+  $('#shareSend').disabled = false;
 }
 
 /* runs */
 async function startRun(){
   try {
-    const r = await fetch('api/run', {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: '{}'});
+    const r = await fetch(API.run, {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: '{}'});
     const j = await r.json();
     toast(j.started ? 'Checking all portals. This takes a few minutes.' : 'A check is already running.');
     pollRun();
@@ -705,15 +729,15 @@ async function startRun(){
 async function pollRun(){
   $('#runBtn').disabled = true; $('#runBtn').textContent = 'Checking portals…';
   try {
-    const j = await (await fetch('api/run', {cache:'no-store'})).json();
+    const j = await (await fetch(API.runStatus, {cache:'no-store'})).json();
     if (j.running) { setTimeout(pollRun, 5000); return; }
   } catch(e){}
   $('#runBtn').disabled = false; $('#runBtn').textContent = 'Check portals now';
-  const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) { FEED = await r.json(); LIVE = true; NOTES = FEED.notes || {}; for (const t of FEED.tenders) prep(t); $('#updated').textContent = 'Updated just now'; renderSources(); render(); toast('Portals checked'); }
+  const r = await fetch(API.feed, {cache:'no-store'}); if (r.ok) { FEED = await r.json(); LIVE = true; NOTES = FEED.notes || {}; for (const t of FEED.tenders) prep(t); $('#updated').textContent = 'Updated just now'; renderSources(); render(); toast('Portals checked'); }
 }
 async function showLog(){
   let log = '';
-  try { log = (await (await fetch('api/run', {cache:'no-store'})).json()).log; } catch(e){}
+  try { log = (await (await fetch(API.runStatus, {cache:'no-store'})).json()).log; } catch(e){}
   $('#infoTitle').textContent = 'Last run log';
   $('#infoBody').innerHTML = `<pre class="log">${esc(log || 'No run yet from the dashboard. Scheduled runs log to data/last-run.log.')}</pre>`;
   $('#infoScrim').hidden = false;

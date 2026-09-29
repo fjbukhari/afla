@@ -39,6 +39,9 @@ def run(only=None, headless=None, log=print):
     finally:
         br.close()
     write_feed(con)
+    if (st.get("website") or {}).get("api_url"):
+        from .push import push
+        push(log)
     return summary
 
 

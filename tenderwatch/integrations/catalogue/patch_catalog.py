@@ -4,6 +4,8 @@ import sys
 src, dst = sys.argv[1], sys.argv[2]
 s = open(src, encoding="utf-8").read()
 assert "tenderPanel" not in s, "already patched"
+# remember the page address before the page's own tab code rewrites it
+s = '<script>window.__JBS_QP = location.search;</script>\n' + s
 
 CSS = """
   /* ---- Tender Watch link (Match tab, staff view) ---- */
@@ -68,7 +70,8 @@ const tenderMin = document.getElementById('tenderMin');
 const tenderSort = document.getElementById('tenderSort');
 const tenderOnlyMatched = document.getElementById('tenderOnlyMatched');
 const tenderExportBtn = document.getElementById('tenderExportBtn');
-const TENDER_FEEDS = ['tender-feed.json', 'http://localhost:8765/api/tenders'];
+// Website: tender-feed.php (staff only, reads the staff tender portal). Office PC: tender-feed.json or the local dashboard.
+const TENDER_FEEDS = ['tender-feed.php', 'tender-feed.json', 'http://localhost:8765/api/tenders'];
 let TENDERS = null, TENDER_ONLY = null;
 const lineCache = new Map();
 if (PRICES_VISIBLE) tenderPanel.style.display = 'block';
@@ -78,8 +81,8 @@ async function loadTenderFeed(){
     try {
       const r = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), {cache: 'no-store'});
       if (!r.ok) continue;
-      const j = await r.json();
-      if (j && Array.isArray(j.tenders)) return { feed: j, from: url.startsWith('http') ? 'Tender Watch on this PC' : 'tender-feed.json' };
+      const j = await r.json().catch(() => null);
+      if (j && Array.isArray(j.tenders)) return { feed: j, from: url.startsWith('http') ? 'Tender Watch on this PC' : (url === 'tender-feed.php' ? 'the staff tender portal' : 'tender-feed.json') };
     } catch(e){}
   }
   return null;
@@ -89,6 +92,8 @@ function tenderDaysLeft(t){
   const d = new Date(t.closing + 'T00:00:00'), now = new Date(); now.setHours(0,0,0,0);
   return Math.round((d - now) / 864e5);
 }
+const TENDER_WORDS = /\b(procurement|purchase|purchasing|supply|supplies|provision|tender|tenders|notice|e-?bid(s|ding)?|bids?|invitation|framework|contract|annual|rate|running|local|fy|financial|year|years|various|misc(ellaneous)?|items?|goods|for|of|the|and|with|at|in|on|by|to|under|budget|project|department|deptt?|hospital|university|institute|re-?tender(ed)?|lot|lots|package|no|ref|phase|bulk|lp|drugs?|medicines?|medicinces|allopathic|pharmacy|disp(osable)?s?|20\d\d(-\d\d)?)\b/gi;
+function tenderTitleWords(title){ return String(title || '').replace(/\(.*?\)/g, ' ').replace(TENDER_WORDS, ' ').replace(/[^A-Za-z0-9 \-]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 function matchLine(text){
   if (!lineCache.has(text)) lineCache.set(text, matchCustomerItem(text));
   return lineCache.get(text);
@@ -101,9 +106,16 @@ async function matchTenders(list){
   const out = [];
   for (let i = 0; i < list.length; i++){
     const t = list[i];
-    const lines = (t.items && t.items.length ? t.items : [t.title]).slice(0, 80);
-    t._lines = lines.map(text => ({ text, res: matchLine(text) }));
     t._fromItems = !!(t.items && t.items.length);
+    const lines = (t._fromItems ? t.items : [t.title]).slice(0, 80);
+    // Tender titles are mostly procurement wording; match on the product words only.
+    t._lines = lines.map(text => {
+      if (t._fromItems) return { text, res: matchLine(text) };
+      const words = tenderTitleWords(text);
+      // A title reduced to one word ("Medicines", "Chemicals") says nothing about which product is wanted.
+      if (tokenize(words).length < 2) return { text, res: { candidates: [], verified: null }, vague: true };
+      return { text, res: matchLine(words) };
+    });
     out.push(t);
     if (i % 5 === 4){
       tenderStatus.textContent = 'Matching tenders against the catalogue… ' + (i + 1) + ' of ' + list.length;
@@ -117,8 +129,9 @@ function renderTenders(){
   const min = parseFloat(tenderMin.value);
   const words = tenderSearch.value.toLowerCase().split(/\s+/).filter(Boolean);
   let rows = TENDERS.filter(t => !TENDER_ONLY || t.id === TENDER_ONLY).map(t => {
-    const hits = t._lines.filter(l => bestPct(l.res) >= min);
-    return { t, hits, misses: t._lines.filter(l => bestPct(l.res) < min) };
+    const need = t._fromItems ? min : Math.max(min, 0.7);   // title-only matches must be strong
+    const hits = t._lines.filter(l => bestPct(l.res) >= need);
+    return { t, hits, misses: t._lines.filter(l => bestPct(l.res) < need) };
   }).filter(({t, hits}) => {
     if (tenderOnlyMatched.checked && !hits.length) return false;
     const hay = [t.title, t.institute, t.city, t.region, t.ref, t.source_name, ...(t.items || [])].join(' ').toLowerCase();
@@ -127,8 +140,11 @@ function renderTenders(){
   rows.sort(tenderSort.value === 'closing'
     ? (a, b) => (a.t.closing || '9999').localeCompare(b.t.closing || '9999')
     : (a, b) => b.hits.length - a.hits.length || (a.t.closing || '9999').localeCompare(b.t.closing || '9999'));
+  const titleOnly = TENDERS.filter(t => !t._fromItems).length;
   tenderStatus.textContent = rows.length + ' of ' + TENDERS.length + ' open tenders shown · ' +
-    rows.reduce((s, r) => s + r.hits.length, 0) + ' tender items matched to catalogue products';
+    rows.reduce((s, r) => s + r.hits.length, 0) + ' tender items matched to catalogue products' +
+    (titleOnly ? ' · ' + titleOnly + ' tenders have no item list yet, so only clear titles are matched (open the tender document and upload it above for a full match)' : '') +
+    (tenderStatus.dataset.from ? ' · from ' + tenderStatus.dataset.from : '');
   tenderExportBtn.style.display = rows.length ? 'inline-block' : 'none';
   tenderExportBtn._rows = rows;
   tenderList.innerHTML = rows.slice(0, 150).map(({t, hits, misses}) => {
@@ -166,7 +182,6 @@ async function runTenderMatch(onlyId){
   TENDERS = await matchTenders(list);
   tenderStatus.dataset.from = got.from + (got.feed.generated ? ', updated ' + got.feed.generated : '');
   renderTenders();
-  tenderStatus.textContent += ' · from ' + tenderStatus.dataset.from;
   return true;
 }
 document.getElementById('tenderLoadBtn').addEventListener('click', () => runTenderMatch(null));
@@ -186,7 +201,8 @@ tenderExportBtn.addEventListener('click', () => {
 
 // Deep links: ?tab=match (also workflow/takara), &q=<lines to match>, &tender=<Tender Watch id>
 (function(){
-  const qp = new URLSearchParams(location.search);
+  // Read the address as it was at page load: the page's own tab links rewrite it (dropping q=).
+  const qp = new URLSearchParams(window.__JBS_QP || location.search);
   const tab = qp.get('tab');
   const btn = {match: matchTabBtn, workflow: workflowTabBtn, takara: crossRefTabBtn, catalog: catalogTabBtn}[tab];
   if (btn) btn.click();

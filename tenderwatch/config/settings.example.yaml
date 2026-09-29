@@ -22,6 +22,14 @@ team:
 # dashboard is running.
 # catalogue_feed_path: C:/Website/catalogue/tender-feed.json
 
+# The website tender portal (staff area of jb-scientific.com). When set, every run also sends this PC's
+# tenders there (login portals, EPADS 2.0, UN portals, item lists). Save the two logins once:
+#   tw set-login website        staff-area username and password
+#   tw set-login website-key    any username + the tender tool's secret_key (config.php on the website)
+# website:
+#   api_url: https://www.jb-scientific.com/catalogue/staff/tenders/api.php
+# catalogue_url: https://www.jb-scientific.com/catalogue/jbs-catalog.html
+
 read_documents: true       # read item lists from tender documents (PDF/Excel) for catalogue matching
 
 # Only needed if the dashboard is shared on the office network (tw serve --lan):
