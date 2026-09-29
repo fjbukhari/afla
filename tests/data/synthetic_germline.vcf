@@ -1,0 +1,31 @@
+##fileformat=VCFv4.2
+##source=AFLA synthetic test data (ClinVar positions, invented genotypes; not from any person)
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##contig=<ID=chr1,length=248956422>
+##contig=<ID=chr7,length=159345973>
+##contig=<ID=chr13,length=114364328>
+##contig=<ID=chr17,length=83257441>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SYNTHETIC01
+chr1	930204	.	G	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr1	930314	.	C	T	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr1	9720793	.	G	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr1	9726972	.	G	A	250	PASS	.	GT:AD:DP:GQ	1/1:0,80:80:99
+chr1	9726985	.	A	G	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr7	193245	.	G	T	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr7	246436	.	A	G	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr7	5977629	.	G	A	250	PASS	.	GT:AD:DP:GQ	1/1:0,80:80:99
+chr7	5982823	.	C	T	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr7	5986826	.	T	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr13	20005113	.	G	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr13	20026620	.	A	G	250	PASS	.	GT:AD:DP:GQ	1/1:0,80:80:99
+chr13	20188999	.	T	C	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr13	20189066	.	C	G	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr13	20189346	.	AG	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr17	519656	.	G	A	250	PASS	.	GT:AD:DP:GQ	1/1:0,80:80:99
+chr17	519811	.	T	C	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr17	4932845	.	T	C	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr17	4933277	.	T	A	250	PASS	.	GT:AD:DP:GQ	0/1:40,38:78:99
+chr17	4934057	.	G	GT	250	PASS	.	GT:AD:DP:GQ	1/1:0,80:80:99

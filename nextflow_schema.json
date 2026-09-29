@@ -1,0 +1,341 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/fjbukhari/afla/main/nextflow_schema.json",
+    "title": "fjbukhari/afla",
+    "workflow_title": "AFLA germline (Illumina short reads)",
+    "description": "Germline small-variant analysis of Illumina panels and exomes: read QC, alignment, coverage, variant calling (GATK or DeepVariant), Ensembl VEP annotation and an interactive teaching report. Education and research use only, not for clinical use.",
+    "url": "https://github.com/fjbukhari/afla",
+    "type": "object",
+    "definitions": {
+        "input": {
+            "title": "Input",
+            "type": "object",
+            "fa_icon": "fas fa-arrow-right",
+            "description": "Give ONE input. This also decides where the workflow starts: FASTQ = full analysis, BAM/CRAM = skip alignment, VCF = annotation and report only.",
+            "properties": {
+                "fastq": {
+                    "title": "FASTQ folder",
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Folder with paired Illumina FASTQ files (*_R1_001.fastq.gz / *_R2_001.fastq.gz, or *_1.fq.gz / *_2.fq.gz). Sub-folders are searched too.",
+                    "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. Files are read where they are; nothing is copied."
+                },
+                "bam": {
+                    "title": "BAM / CRAM (file or folder)",
+                    "type": "string",
+                    "format": "path",
+                    "description": "Already-aligned reads (GRCh38). Alignment is skipped.",
+                    "help_text": "The BAM/CRAM must be aligned to the same reference you choose below."
+                },
+                "vcf": {
+                    "title": "VCF file",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Existing variant file (GRCh38, from any pipeline). Only annotation and the report are run."
+                },
+                "sample_name": {
+                    "title": "Sample name (optional)",
+                    "type": "string",
+                    "description": "Overrides the name taken from the file names. With a FASTQ folder, ALL files are then treated as one sample."
+                }
+            }
+        },
+        "reference": {
+            "title": "Reference and target regions",
+            "type": "object",
+            "fa_icon": "fas fa-dna",
+            "properties": {
+                "ref": {
+                    "title": "Reference genome (FASTA)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "GRCh38 FASTA, uncompressed (recommended: hg38 / GRCh38 no-alt analysis set). Not needed when starting from a VCF.",
+                    "help_text": "bwa index files (.amb .ann .bwt .pac .sa) should sit next to it. The .fai and .dict files are made automatically if missing."
+                },
+                "build_bwa_index": {
+                    "title": "Build bwa index if missing",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Builds the aligner index for the reference (about 1 hour and ~5 GB, needed once). It is saved in the output folder under reference/; copy it next to the FASTA to reuse it."
+                },
+                "bed": {
+                    "title": "Target regions (BED, optional)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Capture kit or panel regions (e.g. Twist Exome 2.0, IDT xGen, Agilent SureSelect; hg38). If empty, the regions the reads actually cover are used.",
+                    "help_text": "Chromosome names with or without 'chr' are both accepted. Regions are padded (below) and overlapping regions merged."
+                },
+                "bed_padding": {
+                    "title": "Padding around targets (bp)",
+                    "type": "integer",
+                    "default": 100,
+                    "minimum": 0,
+                    "description": "Extra bases added on each side of every target region, to include nearby splice sites."
+                },
+                "auto_targets_min_depth": {
+                    "title": "Minimum depth for automatic targets",
+                    "type": "integer",
+                    "default": 20,
+                    "minimum": 1,
+                    "description": "Only used without a BED file: positions with at least this many reads are treated as targets."
+                }
+            }
+        },
+        "steps": {
+            "title": "Steps to run",
+            "type": "object",
+            "fa_icon": "fas fa-list-check",
+            "description": "Tick or untick steps. Steps that do not apply to your input (e.g. trimming when starting from BAM) are skipped automatically.",
+            "properties": {
+                "run_fastp": {
+                    "title": "1. Read QC and trimming (fastp)",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Removes adapters and low-quality ends and writes a read-quality report."
+                },
+                "mark_duplicates": {
+                    "title": "2. Mark duplicate reads",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Keep ON for exomes and hybrid-capture panels. Turn OFF for amplicon panels, where every read of an amplicon starts at the same place by design."
+                },
+                "run_coverage": {
+                    "title": "3. Coverage QC (mosdepth)",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Mean depth and % of target bases at 10x/20x/30x/50x/100x; lists poorly covered regions."
+                },
+                "run_calling": {
+                    "title": "4. Variant calling",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Turn off to stop after alignment and coverage."
+                },
+                "caller": {
+                    "title": "Variant caller",
+                    "type": "string",
+                    "default": "gatk",
+                    "enum": [
+                        "gatk",
+                        "deepvariant"
+                    ],
+                    "description": "gatk = GATK HaplotypeCaller (CPU, container already on this laptop). deepvariant = Google DeepVariant (uses the GPU; first use downloads a large container).",
+                    "help_text": "Both are germline callers: they expect variants at ~50% or ~100% of reads. They are not suitable for low-frequency somatic variants."
+                },
+                "deepvariant_model": {
+                    "title": "DeepVariant model",
+                    "type": "string",
+                    "default": "WES",
+                    "enum": [
+                        "WES",
+                        "WGS"
+                    ],
+                    "description": "WES for exomes and capture panels, WGS for whole genomes."
+                },
+                "use_gpu": {
+                    "title": "Use the NVIDIA GPU (DeepVariant)",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Uses the GPU version of DeepVariant. Turn off if no NVIDIA GPU is available."
+                },
+                "run_annotation": {
+                    "title": "5. Annotate variants (Ensembl VEP)",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Adds gene, consequence, HGVS, gnomAD frequency, ClinVar, REVEL and AlphaMissense (sources set below)."
+                },
+                "run_report": {
+                    "title": "6. Interactive report",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "One HTML report with QC, coverage and a filterable variant table (opens in the Report tab)."
+                }
+            }
+        },
+        "variant_filter": {
+            "title": "Variant quality filter",
+            "type": "object",
+            "fa_icon": "fas fa-filter",
+            "description": "Calls failing these are kept in the VCF but labelled LowQual (the report hides them by default).",
+            "properties": {
+                "min_qual": {
+                    "title": "Minimum QUAL",
+                    "type": "number",
+                    "default": 30,
+                    "minimum": 0,
+                    "description": "Variant call confidence (Phred scale)."
+                },
+                "min_dp": {
+                    "title": "Minimum read depth",
+                    "type": "integer",
+                    "default": 10,
+                    "minimum": 0,
+                    "description": "Reads covering the position."
+                },
+                "min_gq": {
+                    "title": "Minimum genotype quality (GQ)",
+                    "type": "integer",
+                    "default": 20,
+                    "minimum": 0,
+                    "description": "Confidence in the genotype (0/1 vs 1/1)."
+                }
+            }
+        },
+        "annotation": {
+            "title": "Annotation sources",
+            "type": "object",
+            "fa_icon": "fas fa-book-medical",
+            "description": "Local files, so annotation works offline. Leave optional sources empty to skip them.",
+            "properties": {
+                "vep_cache": {
+                    "title": "VEP cache folder",
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Folder that contains homo_sapiens/<version>_GRCh38 (the offline Ensembl cache; includes gnomAD v4.1 frequencies)."
+                },
+                "vep_cache_version": {
+                    "title": "VEP cache version",
+                    "type": "integer",
+                    "default": 115,
+                    "description": "Must match the cache folder and the VEP container (115)."
+                },
+                "vep_fasta": {
+                    "title": "Ensembl FASTA for HGVS names (optional)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Homo_sapiens.GRCh38.dna.primary_assembly.fa (with .fai). Needed for c./p. (HGVS) notation."
+                },
+                "vep_plugins_dir": {
+                    "title": "VEP plugins folder (optional)",
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Folder with REVEL.pm / AlphaMissense.pm. Default: the Plugins folder inside the VEP cache folder."
+                },
+                "clinvar_vcf": {
+                    "title": "ClinVar VCF (optional)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "clinvar_GRCh38.vcf.gz with its .tbi index (monthly releases from NCBI)."
+                },
+                "revel_file": {
+                    "title": "REVEL scores (optional)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "new_tabbed_revel_grch38.tsv.gz with .tbi. Missense pathogenicity score (0-1)."
+                },
+                "alphamissense_file": {
+                    "title": "AlphaMissense scores (optional)",
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "AlphaMissense_hg38.tsv.gz with .tbi (free for non-commercial use)."
+                }
+            }
+        },
+        "output": {
+            "title": "Output and resources",
+            "type": "object",
+            "fa_icon": "fas fa-folder-open",
+            "properties": {
+                "output_format": {
+                    "title": "Alignment file format",
+                    "type": "string",
+                    "default": "cram",
+                    "enum": [
+                        "cram",
+                        "bam"
+                    ],
+                    "description": "CRAM is about half the size of BAM (needs the reference to open, e.g. in IGV)."
+                },
+                "report_max_pop_af": {
+                    "title": "Report: default maximum population frequency",
+                    "type": "number",
+                    "default": 0.01,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Starting value of the 'rare variant' filter in the report (adjustable there)."
+                },
+                "report_min_vaf": {
+                    "title": "Report: default minimum VAF",
+                    "type": "number",
+                    "default": 0.2,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Starting value of the minimum variant allele fraction filter in the report. Germline heterozygous variants sit near 0.5; lower values are often artefacts or somatic/mosaic changes (adjustable in the report)."
+                },
+                "threads": {
+                    "title": "CPU threads",
+                    "type": "integer",
+                    "default": 12,
+                    "minimum": 1,
+                    "description": "Maximum CPU threads for the heavy steps (alignment, calling, annotation)."
+                }
+            }
+        },
+        "misc": {
+            "title": "Miscellaneous",
+            "type": "object",
+            "properties": {
+                "disable_ping": {
+                    "type": "boolean",
+                    "default": true,
+                    "hidden": true,
+                    "description": "Not used."
+                },
+                "help": {
+                    "type": "boolean",
+                    "default": false,
+                    "hidden": true,
+                    "description": "Not used."
+                },
+                "version": {
+                    "type": "boolean",
+                    "default": false,
+                    "hidden": true,
+                    "description": "Not used."
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/input"
+        },
+        {
+            "$ref": "#/definitions/reference"
+        },
+        {
+            "$ref": "#/definitions/steps"
+        },
+        {
+            "$ref": "#/definitions/variant_filter"
+        },
+        {
+            "$ref": "#/definitions/annotation"
+        },
+        {
+            "$ref": "#/definitions/output"
+        },
+        {
+            "$ref": "#/definitions/misc"
+        }
+    ],
+    "properties": {
+        "out_dir": {
+            "type": "string",
+            "default": "output",
+            "hidden": true
+        }
+    },
+    "resources": {
+        "recommended": {
+            "cpus": 12,
+            "memory": "32GB"
+        },
+        "minimum": {
+            "cpus": 4,
+            "memory": "16GB"
+        },
+        "run_time": "Panel: 15-30 minutes. Exome: about 2-4 hours (GATK) or less with DeepVariant on the GPU.",
+        "arm_support": false
+    }
+}

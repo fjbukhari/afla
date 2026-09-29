@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--muted:#5d6778;--line:#dde1e8;--accent:#1f6feb;--warn:#b42318;--warnbg:#fdecea;--good:#1a7f37;--mid:#9a6700;--chip:#eef1f5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171c23;--ink:#e6e9ee;--muted:#9aa4b2;--line:#2a313b;--accent:#4c8dff;--warn:#ff7b72;--warnbg:#3a1714;--good:#3fb950;--mid:#d29922;--chip:#222a35}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:16px}
+.banner{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 12px;font-weight:600;margin-bottom:12px}
+h1{font-size:20px;margin:4px 0 2px} h2{font-size:16px;margin:0 0 10px} .muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:10px}
+.tile .v{font-size:20px;font-weight:650} .tile .l{color:var(--muted);font-size:12px}
+.tile .h{font-size:11px;color:var(--muted);margin-top:4px}
+.ok{color:var(--good)} .mid{color:var(--mid)} .bad{color:var(--warn)}
+.bars{display:grid;grid-template-columns:60px 1fr 60px;gap:6px 10px;align-items:center;max-width:560px}
+.bar{height:12px;background:var(--chip);border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start}
+.filters label{display:flex;gap:6px;align-items:center}
+.filters fieldset{border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:0}
+.filters legend{font-size:12px;color:var(--muted)}
+input[type=number]{width:90px} input,textarea,select,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+textarea{width:230px;height:54px}
+button{cursor:pointer} button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
+th{position:sticky;top:0;background:var(--card);cursor:pointer;user-select:none;font-weight:600}
+tbody tr:hover{background:var(--chip);cursor:pointer}
+.chip{display:inline-block;background:var(--chip);border-radius:10px;padding:0 7px;font-size:12px}
+.chip.p{background:var(--warnbg);color:var(--warn)} .chip.b{color:var(--good)}
+.detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px}
+.detail div b{color:var(--muted);font-weight:500;display:inline-block;min-width:130px}
+a{color:var(--accent)} .pager{display:flex;gap:8px;align-items:center;margin-top:8px}
+details summary{cursor:pointer;color:var(--accent)}
+.help{font-size:12px;color:var(--muted);max-width:900px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">Education and research use only. Not for clinical diagnosis or patient management.</div>
+  <h1 id="title"></h1>
+  <div class="muted" id="subtitle"></div>
+  <div id="samplePick" class="card" hidden><label>Sample: <select id="sampleSel"></select></label></div>
+
+  <div class="card" id="qcCard"><h2>Quality control</h2><div class="tiles" id="tiles"></div>
+    <p class="help">Hints are rough teaching guides for Illumina panels/exomes, not validated laboratory thresholds.</p></div>
+
+  <div class="card" id="covCard"><h2>Coverage of target regions</h2>
+    <div class="bars" id="bars"></div>
+    <details style="margin-top:10px"><summary id="lowSum"></summary><div class="tablebox" style="max-height:300px;margin-top:8px"><table><thead><tr><th>Chrom</th><th>Start</th><th>End</th><th>Mean depth</th></tr></thead><tbody id="lowBody"></tbody></table></div></details>
+  </div>
+
+  <div class="card" id="varCard"><h2>Variant explorer</h2>
+    <div class="presets">
+      <button data-preset="rare">Rare, protein-affecting</button>
+      <button data-preset="clinvar">ClinVar pathogenic / likely pathogenic</button>
+      <button data-preset="panel">Rare in my gene list</button>
+      <button data-preset="all">All variants</button>
+    </div>
+    <div class="filters">
+      <fieldset><legend>Quality</legend>
+        <label><input type="checkbox" id="fPass" checked> PASS only</label>
+        <label>Min depth <input type="number" id="fDp" value="0" min="0"></label>
+        <label>Min VAF <input type="number" id="fVaf" value="0" min="0" max="1" step="0.05"></label>
+      </fieldset>
+      <fieldset><legend>Population frequency</legend>
+        <label>Max gnomAD / max pop. AF <input type="number" id="fAf" step="0.001" min="0" max="1"></label>
+        <label><input type="checkbox" id="fNoAf" checked> keep variants with no known frequency</label>
+      </fieldset>
+      <fieldset><legend>Predicted impact (VEP)</legend>
+        <label><input type="checkbox" class="imp" value="HIGH" checked> HIGH</label>
+        <label><input type="checkbox" class="imp" value="MODERATE" checked> MODERATE</label>
+        <label><input type="checkbox" class="imp" value="LOW"> LOW</label>
+        <label><input type="checkbox" class="imp" value="MODIFIER"> MODIFIER</label>
+      </fieldset>
+      <fieldset><legend>ClinVar</legend>
+        <label><input type="checkbox" id="fClin"> pathogenic / likely pathogenic only</label>
+      </fieldset>
+      <fieldset><legend>Genes (one per line or comma-separated)</legend>
+        <textarea id="fGenes" placeholder="e.g. BRCA1, BRCA2, PALB2"></textarea>
+      </fieldset>
+      <fieldset><legend>Search</legend><input id="fText" placeholder="gene, HGVS, rsID…" style="width:200px"></fieldset>
+    </div>
+    <div class="pager"><b id="count"></b><span class="muted">Click a column to sort, a row for details.</span>
+      <span style="flex:1"></span><button id="csv">Export filtered rows (CSV)</button></div>
+    <div class="tablebox" style="max-height:620px;margin-top:8px">
+      <table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+    </div>
+    <div class="pager"><button id="prev">‹ Prev</button><span id="page"></span><button id="next">Next ›</button></div>
+    <div class="card" id="detail" hidden></div>
+  </div>
+
+  <div class="card"><h2>Methods and versions</h2><div id="methods" class="help"></div></div>
+</div>
+
+<script id="afla-data" type="application/json">__AFLA_DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('afla-data').textContent);
+const meta = DATA.meta || {};
+const $ = id => document.getElementById(id);
+const fmt = (x, d=2) => x == null ? '–' : (typeof x === 'number' ? (Math.abs(x) < 0.001 && x !== 0 ? x.toExponential(1) : x.toFixed(d)) : x);
+const pct = x => x == null ? '–' : x.toFixed(1) + '%';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S = null, rows = [], sortKey = 'gene', sortDir = 1, page = 0;
+const PAGE = 200;
+const isPLP = v => /(^|[ ,/|])(pathogenic|likely pathogenic)/i.test(v.clinvar || '') && !/conflicting/i.test(v.clinvar || '');
+
+$('title').textContent = meta.title || 'AFLA germline report';
+$('subtitle').textContent = `Workflow ${meta.workflow_version || ''} · generated ${meta.date || ''} · reference ${meta.reference || ''}`;
+$('fAf').value = meta.report_max_pop_af ?? 0.01;
+$('fVaf').value = meta.report_min_vaf ?? 0;
+
+function tile(label, value, hint, cls) {
+  return `<div class="tile"><div class="v ${cls||''}">${value}</div><div class="l">${label}</div>${hint?`<div class="h">${hint}</div>`:''}</div>`;
+}
+function grade(x, good, okv, higher=true) { if (x == null) return ''; return higher ? (x >= good ? 'ok' : x >= okv ? 'mid' : 'bad') : (x <= good ? 'ok' : x <= okv ? 'mid' : 'bad'); }
+
+function renderQC() {
+  const q = S.qc || {}, f = q.fastp, fl = q.flagstat, c = q.coverage, st = S.stats;
+  let t = '';
+  if (f) {
+    t += tile('Read pairs (raw)', (f.reads_before/2).toLocaleString(), 'fragments sequenced');
+    t += tile('Q30 bases after trimming', pct(100*f.q30_after), '≥85% is typical for Illumina', grade(100*f.q30_after, 85, 75));
+    t += tile('Reads kept by fastp', pct(100*f.reads_after/f.reads_before), 'low values: adapters/poor quality', grade(100*f.reads_after/f.reads_before, 90, 80));
+    if (f.insert_size_peak) t += tile('Insert size peak', f.insert_size_peak + ' bp', 'DNA fragment length');
+  }
+  if (fl) {
+    t += tile('Reads mapped', pct(fl.pct_mapped), '≥98% expected for human DNA', grade(fl.pct_mapped, 98, 95));
+    if (fl.pct_properly_paired != null) t += tile('Properly paired', pct(fl.pct_properly_paired), 'both ends map as expected', grade(fl.pct_properly_paired, 95, 90));
+    t += tile('Duplicates', meta.mark_duplicates ? pct(fl.pct_duplicates) : 'not marked', meta.mark_duplicates ? 'PCR/optical copies; exomes often 5–20%' : 'amplicon mode', meta.mark_duplicates ? grade(fl.pct_duplicates, 20, 35, false) : '');
+  }
+  if (c) {
+    t += tile('Mean target depth', fmt(c.mean_depth, 0) + '×', 'exome: aim ≥100× mean', grade(c.mean_depth, 100, 50));
+    if (c.pct_at['20X'] != null) t += tile('Target bases ≥20×', pct(c.pct_at['20X']), 'exome: aim ≥95%', grade(c.pct_at['20X'], 95, 90));
+  }
+  if (st) {
+    t += tile('Variants (PASS / all)', `${st.pass.toLocaleString()} / ${st.total.toLocaleString()}`, `${st.snv} SNVs, ${st.indel} indels`);
+    t += tile('Ti/Tv (PASS SNVs)', fmt(st.titv), 'coding: ~2.8–3.3; genome ~2.0', st.titv == null ? '' : (st.titv > 2.5 && st.titv < 3.6 ? 'ok' : 'mid'));
+    t += tile('Het / hom-alt', fmt(st.het_hom), '~1.5–2 outbred; lower suggests consanguinity');
+  }
+  $('tiles').innerHTML = t || '<span class="muted">No QC available (workflow started from a VCF).</span>';
+  $('qcCard').hidden = !t;
+
+  $('covCard').hidden = !c;
+  if (c) {
+    $('bars').innerHTML = Object.entries(c.pct_at).map(([k, v]) => `<span>${k}</span><div class="bar"><i style="width:${v}%"></i></div><span>${v.toFixed(1)}%</span>`).join('');
+    $('lowSum').textContent = `${c.n_low_regions} of ${c.n_regions} target regions have mean depth below 20× (lowest ${c.low_regions.length} listed)`;
+    $('lowBody').innerHTML = c.low_regions.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+  }
+}
+
+const COLS = [
+  ['gene', 'Gene'], ['loc', 'Variant'], ['hgvsc', 'HGVSc'], ['hgvsp', 'HGVSp'], ['consequence', 'Consequence'],
+  ['gt', 'GT'], ['vaf', 'VAF'], ['dp', 'DP'], ['popaf', 'gnomAD / max AF'], ['clinvar', 'ClinVar'],
+  ['revel', 'REVEL'], ['am', 'AlphaMissense'], ['filter', 'Filter'],
+];
+$('head').innerHTML = COLS.map(([k, l]) => `<th data-k="${k}">${l}</th>`).join('');
+const popaf = v => [v.max_af, v.gnomade, v.gnomadg].filter(x => x != null).reduce((a, b) => Math.max(a, b), -1);
+const keyVal = (v, k) => k === 'loc' ? v.chrom.replace('chr','').padStart(2,'0') + ':' + String(v.pos).padStart(10,'0')
+  : k === 'popaf' ? popaf(v) : k === 'am' ? (v.am_score ?? -1) : (v[k] ?? '');
+
+function applyFilters() {
+  const imp = [...document.querySelectorAll('.imp:checked')].map(x => x.value);
+  const maxAf = parseFloat($('fAf').value), keepNoAf = $('fNoAf').checked;
+  const genes = new Set($('fGenes').value.split(/[\s,;]+/).map(g => g.trim().toUpperCase()).filter(Boolean));
+  const txt = $('fText').value.trim().toLowerCase(), minDp = +$('fDp').value || 0, minVaf = +$('fVaf').value || 0;
+  rows = (S.variants || []).filter(v => {
+    if ($('fPass').checked && !(v.filter === 'PASS' || v.filter === '.')) return false;
+    if ((v.dp ?? 0) < minDp || (v.vaf ?? 1) < minVaf) return false;
+    const af = popaf(v);
+    if (af < 0) { if (!keepNoAf) return false; } else if (!isNaN(maxAf) && af > maxAf) return false;
+    if (imp.length && S.annotated && !imp.includes(v.impact)) return false;
+    if ($('fClin').checked && !isPLP(v)) return false;
+    if (genes.size && !genes.has((v.gene || '').toUpperCase())) return false;
+    if (txt && !JSON.stringify(v).toLowerCase().includes(txt)) return false;
+    return true;
+  });
+  sortRows(); page = 0; renderTable();
+}
+function sortRows() {
+  rows.sort((a, b) => { const x = keyVal(a, sortKey), y = keyVal(b, sortKey); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+}
+function clinChip(v) {
+  if (!v.clinvar) return '';
+  const c = isPLP(v) ? 'p' : /benign/i.test(v.clinvar) ? 'b' : '';
+  return `<span class="chip ${c}" title="${esc(v.clinvar_status)}">${esc(v.clinvar)}</span>`;
+}
+function renderTable() {
+  const n = rows.length, pages = Math.max(1, Math.ceil(n / PAGE));
+  page = Math.min(page, pages - 1);
+  $('count').textContent = `${n.toLocaleString()} of ${(S.variants || []).length.toLocaleString()} variants shown`;
+  $('page').textContent = `page ${page + 1} / ${pages}`;
+  $('body').innerHTML = rows.slice(page * PAGE, (page + 1) * PAGE).map((v, i) => `<tr data-i="${page * PAGE + i}">
+    <td><b>${esc(v.gene)}</b></td><td>${esc(v.chrom)}:${v.pos} ${esc(v.ref.slice(0,12))}&gt;${esc(v.alt.slice(0,12))}</td>
+    <td>${esc(v.hgvsc)}</td><td>${esc(v.hgvsp)}</td><td>${esc((v.consequence||'').replace(/_/g,' ').replace(/&/g,', '))}</td>
+    <td>${esc(v.gt)}</td><td>${fmt(v.vaf)}</td><td>${fmt(v.dp,0)}</td><td>${popaf(v) < 0 ? '–' : fmt(popaf(v), 4)}</td>
+    <td>${clinChip(v)}</td><td>${fmt(v.revel)}</td><td>${esc(v.am_class.replace('likely_','likely '))}</td><td>${esc(v.filter)}</td></tr>`).join('')
+    || `<tr><td colspan="${COLS.length}" class="muted">No variants match these filters.</td></tr>`;
+}
+function detail(v) {
+  const c = v.chrom.replace('chr', ''), gn = `${c}-${v.pos}-${v.ref}-${v.alt}`;
+  const rs = (v.existing || '').split('&').find(x => x.startsWith('rs'));
+  const f = [['Gene', v.gene], ['Transcript', v.transcript + (v.mane ? ' (MANE Select)' : '')], ['Exon', v.exon], ['HGVSc', v.hgvsc], ['HGVSp', v.hgvsp],
+    ['Consequence', v.consequence], ['Impact', v.impact], ['Class', v.vclass], ['Genotype', v.gt], ['VAF', fmt(v.vaf)], ['Depth', v.dp], ['GQ', v.gq], ['QUAL', fmt(v.qual,1)],
+    ['Filter', v.filter], ['gnomAD exomes AF', fmt(v.gnomade, 5)], ['gnomAD genomes AF', fmt(v.gnomadg, 5)], ['Max population AF', `${fmt(v.max_af, 5)} ${v.max_af_pops}`],
+    ['ClinVar', v.clinvar], ['ClinVar review', v.clinvar_status], ['ClinVar condition', v.clinvar_disease], ['REVEL', fmt(v.revel)],
+    ['AlphaMissense', `${v.am_class} ${fmt(v.am_score)}`], ['SIFT', v.sift], ['PolyPhen', v.polyphen], ['Known IDs', v.existing]];
+  $('detail').innerHTML = `<h2>${esc(v.gene)} ${esc(v.hgvsc)} ${esc(v.hgvsp)}</h2><div class="detail">${f.map(([k, x]) => `<div><b>${k}</b> ${esc(x ?? '–')}</div>`).join('')}</div>
+    <p>Look up: <a target="_blank" rel="noopener" href="https://gnomad.broadinstitute.org/variant/${gn}?dataset=gnomad_r4">gnomAD</a> ·
+    <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/clinvar/?term=${encodeURIComponent(rs || (v.gene + ' ' + v.hgvsc))}">ClinVar</a> ·
+    <a target="_blank" rel="noopener" href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr${c}:${v.pos - 25}-${v.pos + 25}">UCSC</a>
+    ${v.gene ? `· <a target="_blank" rel="noopener" href="https://search.clinicalgenome.org/kb/genes?search=${encodeURIComponent(v.gene)}">ClinGen</a>` : ''}
+    ${rs ? `· <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/snp/${rs}">dbSNP</a>` : ''}</p>
+    <p class="help">Interpretation (e.g. ACMG/AMP criteria) needs phenotype, inheritance, segregation and literature review. These annotations are evidence to weigh, not a classification.</p>`;
+  $('detail').hidden = false; $('detail').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+function csv() {
+  const keys = ['chrom','pos','ref','alt','gene','transcript','hgvsc','hgvsp','consequence','impact','gt','vaf','dp','gq','filter','gnomade','gnomadg','max_af','clinvar','clinvar_status','clinvar_disease','revel','am_class','am_score','existing'];
+  const q = x => `"${String(x ?? '').replace(/"/g, '""')}"`;
+  const text = [keys.join(','), ...rows.map(v => keys.map(k => q(v[k])).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type: 'text/csv'}));
+  a.download = `${S.sample}.filtered_variants.csv`; a.click();
+}
+const PRESETS = {
+  rare: () => { setImp(['HIGH','MODERATE']); $('fVaf').value = meta.report_min_vaf ?? 0; $('fAf').value = meta.report_max_pop_af ?? 0.01; $('fClin').checked = false; $('fGenes').value = ''; },
+  clinvar: () => { setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fClin').checked = true; $('fGenes').value = ''; },
+  panel: () => { setImp(['HIGH','MODERATE','LOW']); $('fVaf').value = meta.report_min_vaf ?? 0; $('fAf').value = meta.report_max_pop_af ?? 0.01; $('fClin').checked = false; $('fGenes').focus(); },
+  all: () => { setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fClin').checked = false; $('fGenes').value = ''; $('fPass').checked = false; $('fNoAf').checked = true; },
+};
+function setImp(list) { document.querySelectorAll('.imp').forEach(x => x.checked = list.includes(x.value)); $('fNoAf').checked = true; $('fPass').checked = true; }
+
+function selectSample(i) { S = DATA.samples[i]; $('detail').hidden = true; renderQC(); $('varCard').hidden = !S.variants; if (S.variants) applyFilters(); }
+function methods() {
+  const p = meta.params || {}, tools = meta.tools || {};
+  $('methods').innerHTML = `<p>Steps run: ${esc((meta.steps || []).join(' → '))}.</p>
+    <p>Tools (containers): ${Object.entries(tools).map(([k, v]) => `${esc(k)} <code>${esc(v)}</code>`).join('; ')}.</p>
+    <p>Annotation: Ensembl VEP cache ${esc(p.vep_cache_version)} (includes gnomAD v4.1 exome/genome frequencies); ${esc((meta.annotation_sources || []).join(', ') || 'no extra sources')}.</p>
+    <p>Quality filter: QUAL ≥ ${esc(p.min_qual)}, depth ≥ ${esc(p.min_dp)}, GQ ≥ ${esc(p.min_gq)}; failing calls are kept and labelled LowQual.
+    Target regions: ${esc(meta.targets || '')}, padded by ${esc(p.bed_padding)} bp.</p>
+    <details><summary>All parameters</summary><pre>${esc(JSON.stringify(p, null, 2))}</pre></details>`;
+}
+
+document.querySelectorAll('.filters input, .filters textarea').forEach(el => el.addEventListener('input', applyFilters));
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { PRESETS[b.dataset.preset](); applyFilters(); }));
+$('head').addEventListener('click', e => { const k = e.target.dataset.k; if (!k) return; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; sortRows(); renderTable(); });
+$('body').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) detail(rows[+tr.dataset.i]); });
+$('prev').onclick = () => { if (page > 0) { page--; renderTable(); } };
+$('next').onclick = () => { if ((page + 1) * PAGE < rows.length) { page++; renderTable(); } };
+$('csv').onclick = csv;
+if (DATA.samples.length > 1) {
+  $('samplePick').hidden = false;
+  $('sampleSel').innerHTML = DATA.samples.map((s, i) => `<option value="${i}">${esc(s.sample)}</option>`).join('');
+  $('sampleSel').onchange = e => selectSample(+e.target.value);
+}
+methods();
+if (DATA.samples.length) selectSample(0);
+</script>
+</body>
+</html>

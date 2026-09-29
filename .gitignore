@@ -26,3 +26,5 @@ results/
 # local inventory outputs (share deliberately, after review)
 afla-inventory-*.txt
 !tests/data/**
+output/
+work/

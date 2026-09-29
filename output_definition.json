@@ -1,0 +1,52 @@
+{
+  "files": {
+    "report": {
+      "filepath": "afla-report.html",
+      "title": "AFLA germline report",
+      "description": "Interactive report: QC, coverage and filterable annotated variants for all samples.",
+      "mime-type": "text/html",
+      "optional": true,
+      "type": "aggregated"
+    },
+    "fastp-report": {
+      "filepath": "{{ alias }}/qc/{{ alias }}.fastp.html",
+      "title": "Read QC report (fastp)",
+      "description": "Read quality before and after trimming.",
+      "mime-type": "text/html",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "alignment": {
+      "filepath": "{{ alias }}/alignment/{{ alias }}.cram",
+      "title": "Aligned reads",
+      "description": "Sorted CRAM (or BAM) with index.",
+      "mime-type": "application/octet-stream",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "coverage": {
+      "filepath": "{{ alias }}/qc/{{ alias }}.mosdepth.summary.txt",
+      "title": "Coverage summary",
+      "description": "mosdepth depth summary over target regions.",
+      "mime-type": "text/tab-separated-values",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "variants": {
+      "filepath": "{{ alias }}/variants/{{ alias }}.vcf.gz",
+      "title": "Variants (normalised, quality-labelled)",
+      "description": "Small variants within target regions; failing calls labelled LowQual.",
+      "mime-type": "application/gzip",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "annotated-variants": {
+      "filepath": "{{ alias }}/variants/{{ alias }}.annotated.vcf.gz",
+      "title": "Annotated variants",
+      "description": "Variants with Ensembl VEP annotation (CSQ field).",
+      "mime-type": "application/gzip",
+      "optional": true,
+      "type": "per-sample"
+    }
+  }
+}

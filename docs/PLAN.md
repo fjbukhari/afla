@@ -1,12 +1,14 @@
-# Plan: Illumina / DNBSEQ NGS analysis in EPI2ME Desktop, zero-cost
+# Plan: Illumina short-read NGS analysis in EPI2ME Desktop, zero-cost
 
 Status: **proposal v3, Stage 0 not started**. Education and research use only, not for clinical use.
 
 Constraints (confirmed):
 - **Zero budget:** no hardware upgrades, no paid cloud, no university HPC (not available in Pakistan).
-- **Laptop:** Windows 11, 64 GB RAM, 16 cores, 8 GB NVIDIA GPU, ~100 GB free disk.
+- **Laptop:** Windows 11, 64 GB RAM, 16 cores, 8 GB NVIDIA GPU (RTX 4070 Laptop), 1 TB disk. Inventory on 2026-09-28 found
+  187 GB free on C: before clean-up; the plan still keeps the lean design so it works on laptops with less space.
 - **Reference:** GRCh38 only.
-- **First data:** BGI exomes (DNBSEQ platform), capture kit unknown (possibly Agilent SureSelect).
+- **First data:** no project-specific exome yet. Development and testing use public reference samples: the TruSight Myeloid
+  NA12877/Horizon panel run already on the laptop (Illumina MiSeq), GIAB exomes and public teaching VCFs.
 - The existing HTML tertiary tool can't be shared → **we build a new one ("AFLA Interpreter")**.
 
 Compute model: **laptop for everything, one exome at a time; free public Galaxy servers as overflow.**
@@ -23,7 +25,7 @@ Compute model: **laptop for everything, one exome at a time; free public Galaxy 
    downloaded by each user and never redistributed. Every report carries a "not for clinical use" banner
    and lists tool and database versions.
 
-## 2. What fits on the laptop (100 GB free, no upgrades)
+## 2. What fits on the laptop (lean design, sized for ~100 GB free)
 
 The v1 design needed ~150 GB+ (full VEP cache, Exomiser data, bwa-mem2 index). The lean design:
 
@@ -48,7 +50,7 @@ WSL memory capped at ~52 GB. The GPU is used when available (§3.4).
 ## 3. Zero-cost compute
 
 ### 3.1 Laptop: "one exome at a time" recipe
-- **FASTQs are read where they already are** (e.g. `D:\\exomes\\…` via `/mnt/d`), never copied into WSL.
+- **FASTQs are read where they already are** (e.g. `C:\\Users\\<you>\\Downloads\\…` via `/mnt/c`), never copied into WSL.
   This is slower I/O, but it saves 10–15 GB per sample.
 - Alignment is **streamed** (`bwa mem | samtools sort` → CRAM) with no intermediate SAM/BAM. Duplicate marking
   is done on the fly (`samtools markdup`).
@@ -64,7 +66,7 @@ usegalaxy.eu / usegalaxy.org / usegalaxy.org.au are free, need no install, and g
 **free TIaaS** (Training Infrastructure as a Service) queues for classes. Use them when the laptop is busy, for
 whole-class exercises, or for metagenomics with big databases. Students do FASTQ → VCF there (BWA-MEM2,
 DeepVariant/FreeBayes, Kraken2 …), download the VCF (a few MB) and open it in the AFLA Interpreter on any computer.
-Tip: if BGI provides download links for the data, give Galaxy the URL directly instead of uploading over a slow connection.
+Tip: if the sequencing provider gives download links for the data, give Galaxy the URL directly instead of uploading over a slow connection.
 
 ### 3.3 Not used
 Paid cloud, Parabricks (needs a ≥16 GB GPU), and free-tier ARM cloud VMs (most bioinformatics containers are
@@ -87,16 +89,15 @@ The workflows have a `use_gpu` switch (default **on** when a GPU is detected), w
 `containerOptions '--gpus all'`. With the switch off, identical CPU containers are used. To save disk, only the GPU
 DeepVariant image is kept (it also runs on CPU).
 
-## 3a. BGI / DNBSEQ data specifics
-- BGI "Illumina-like" exomes are usually sequenced on **DNBSEQ** (MGISEQ/DNBSEQ-G400/T7). The FASTQ format is the same;
-  headers differ, and the read group uses `PL:DNBSEQ`. fastp handles DNBSEQ adapters (auto-detected, or the MGI adapter preset).
-- DeepVariant's WES model is trained mainly on Illumina, but it works well on DNBSEQ. We will **check this ourselves**
-  with public DNBSEQ reference-sample (GIAB HG001/HG002) data plus hap.py, and fall back to GATK HaplotypeCaller if needed.
-- **Unknown capture kit → auto-detection:** the workflow measures on-target coverage against candidate BEDs
+## 3a. Data from other providers (optional support)
+- Some providers (e.g. BGI/MGI) sequence on **DNBSEQ**. The FASTQ format is the same as Illumina; headers differ and the read
+  group uses `PL:DNBSEQ`. fastp handles MGI adapters. This is optional support, not a current priority; if DNBSEQ data is
+  used, DeepVariant should first be checked on public DNBSEQ GIAB data with hap.py.
+- **Unknown capture kit → auto-detection:** for exomes delivered without a kit name, the workflow measures on-target coverage against candidate BEDs
   (Agilent SureSelect V5/V6/V7/V8, IDT xGen v1/v2, Twist Exome 2.x, BGI/MGI Exome V4/V5 where available) and
   reports the best match. Agilent BEDs need a free SureDesign login, so each user downloads them once. If none matches, it
   falls back to a **data-derived target BED** (regions ≥20× from `mosdepth`, intersected with GENCODE coding exons ±50 bp).
-- BGI often also delivers **BAM and VCF**. Those enter directly through `start_from = bam | vcf`.
+- Providers often also deliver **BAM and VCF**. Those enter directly through `start_from = bam | vcf`.
 
 ## 4. AFLA Interpreter (new tertiary analysis tool)
 
@@ -144,12 +145,12 @@ optional because of disk. SpliceAI can instead be run locally on the GPU for the
 |---|---|---|
 | **0. Foundations** | Repo skeleton in EPI2ME layout; minimal workflow imported into EPI2ME; `setup-references --lean`; Windows 11/WSL2 setup guide with disk-compaction helper | Imported workflow runs from the EPI2ME GUI; lean references use <35 GB |
 | **1. AFLA Interpreter v1** (first, because it delivers value immediately with *existing* VCFs) | Standalone HTML: VCF load, filters, panels, variant cards, live gnomAD/ClinVar lookup, case report | A GIAB or public teaching VCF goes through filtering → report entirely in the browser |
-| **2. Germline workflow** | FASTQ/BAM/VCF entry, DNBSEQ support, capture-kit auto-detection, QC, DeepVariant, lean annotation bundle, Interpreter as the EPI2ME report; hap.py benchmark on GIAB exome (DNBSEQ + Illumina) | SNV F1 > 0.99 in high-confidence capture regions; one BGI exome completes on the laptop within the disk budget |
+| **2. Germline workflow** | FASTQ/BAM/VCF entry, capture-kit auto-detection, QC, DeepVariant, lean annotation bundle, Interpreter as the EPI2ME report; hap.py benchmark on a GIAB exome | SNV F1 > 0.99 in high-confidence capture regions; one public exome completes on the laptop within the disk budget |
 | **3. Tertiary depth** | ACMG assistant, HPO matching, trio/inheritance, CNV (ExomeDepth/CNVkit), ROH (important for consanguineous families), teaching mode; Galaxy → Interpreter handover guide | Solved teaching cases rank the causal variant in the top 5 |
 | **4. Somatic** | workflow + Interpreter somatic mode | Public reference samples (e.g. SEQC2) reproduce expected calls |
 | **5. Microbiology & metagenomics** | two workflows + HTML reports | Reference isolates/mock communities give the expected results |
 
 ## 7. Open questions
 
-1. What exactly did BGI deliver: FASTQ only, or also BAM/VCF? Does their report or delivery email name the capture kit?
+1. Which real panels/exomes (kit, sequencer) will be analysed first, once available?
 2. Typical number of students/samples per class (decides whether Galaxy TIaaS is worth requesting).
