@@ -111,6 +111,33 @@ Then in EPI2ME → AFLA germline → Run:
 
 Open the **Report** tab when it finishes. See `docs/USER_MANUAL.md` for what everything means.
 
+## Classroom: many computers, slow or no internet (USB kit)
+
+Prepare once, on a computer where AFLA already works (resources downloaded, Docker Desktop running):
+```bash
+bash ~/afla/scripts/afla-usb-kit.sh pack --usb /mnt/e          # E: drive, 128 GB, formatted exFAT or NTFS
+```
+It writes `E:\AFLA-KIT` (about 60 GB): the AFLA code at the current release, every Docker container the workflows use,
+the resources folder and the practice data. Options: `--no-deepvariant` (saves ~7 GB), `--no-testdata`,
+`--no-images` (computers will download containers on their first run).
+
+On each student computer: install WSL2 Ubuntu, Docker Desktop and EPI2ME Desktop (steps 1–4 above; their installers can be
+copied to the drive too), open EPI2ME once, then in Ubuntu:
+```bash
+bash /mnt/e/AFLA-KIT/afla-usb-kit.sh unpack --usb /mnt/e
+```
+It installs the code (`~/afla`), loads the containers, copies the resources to `C:\Users\<you>\afla-resources` and the
+practice data, and adds AFLA to EPI2ME: no internet needed. About 20–40 minutes per computer, mostly copying.
+
+Every computer then runs the **same version** (shown in the report header and in `KIT_INFO.txt`).
+
+## Versions and updates
+
+Releases are tagged (`v0.3.0`, ...; see `CHANGELOG.md`). EPI2ME's *Import workflow* offers the tagged versions.
+In Ubuntu: `cd ~/afla && git fetch --tags && git checkout v0.3.0` pins a version; `git checkout claude/epi2me-illumina-ngs-pipeline-6qkr8o && git pull`
+follows the latest development. After changing version, run `bash scripts/install-epi2me.sh` again.
+For a class, make a new USB kit after each release you adopt.
+
 ## Other computers (students)
 
 - Minimum: 4 CPU cores, **12 GB RAM** (16 GB better), 60 GB free disk, Windows 10/11, macOS or Linux with Docker and EPI2ME.

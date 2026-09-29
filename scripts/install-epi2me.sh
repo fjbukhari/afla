@@ -24,8 +24,12 @@ DEST="$DEST/fjbukhari"
 python3 "$REPO/scripts/make_schema.py" >/dev/null 2>&1 || true
 EXCL=(--exclude output --exclude work --exclude '.nextflow*' --exclude somatic --exclude docs/slides --exclude tests/data)
 mkdir -p "$DEST/afla" "$DEST/afla-somatic"
-rsync -a --delete "${EXCL[@]}" "$REPO/" "$DEST/afla/"
-rsync -a --delete "${EXCL[@]}" "$REPO/" "$DEST/afla-somatic/"
+copy() {  # mirror the repository into an EPI2ME workflow folder
+  if command -v rsync >/dev/null; then rsync -a --delete "${EXCL[@]}" "$REPO/" "$1/"
+  else rm -rf "$1" && mkdir -p "$1" && (cd "$REPO" && tar cf - --exclude=output --exclude=work --exclude='.nextflow*' --exclude=somatic --exclude=docs/slides --exclude=tests/data .) | tar xf - -C "$1"; fi
+}
+copy "$DEST/afla"
+copy "$DEST/afla-somatic"
 cp "$REPO/somatic/mode.config" "$DEST/afla-somatic/conf/mode.config"
 cp "$REPO/somatic/nextflow_schema.json" "$DEST/afla-somatic/nextflow_schema.json"
 cp "$REPO/somatic/output_definition.json" "$DEST/afla-somatic/output_definition.json"

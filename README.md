@@ -22,8 +22,9 @@ Start from **FASTQ, BAM/CRAM or a VCF**; finish with an interactive report and a
 4. **Beginner slide decks**: [`docs/slides/`](docs/slides/).
 5. Technical reference: [`docs/WORKFLOW.md`](docs/WORKFLOW.md); tests: [`tests/README.md`](tests/README.md); background plan: [`docs/PLAN.md`](docs/PLAN.md).
 
-Any computer with EPI2ME can import `https://github.com/fjbukhari/afla` (Workflows → Import workflow).
-CPU and memory are detected automatically (minimum 4 cores / 12 GB RAM).
+Current release: **v0.3.0** (`CHANGELOG.md`). Any computer with EPI2ME can import `https://github.com/fjbukhari/afla`
+(Workflows → Import workflow). CPU and memory are detected automatically (minimum 4 cores / 12 GB RAM).
+Classrooms without good internet: `scripts/afla-usb-kit.sh` packs everything onto a USB drive (see `docs/INSTALL.md`).
 
 Uses only free/open tools and data; some databases are free for non-commercial use only (REVEL, AlphaMissense, SpliceAI,
 COSMIC, OncoKB) and are downloaded by each user under their own licence.
