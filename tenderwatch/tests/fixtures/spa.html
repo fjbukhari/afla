@@ -1,0 +1,12 @@
+<html><body><div id="app">Loading…</div><button id="nx">Next ›</button>
+<script>
+let page = 1;
+async function show(){
+  const r = await fetch('/api/tenders?page=' + page); const j = await r.json();
+  document.getElementById('app').innerHTML = j.data.items.map(t => '<div class="card"><h3>' + t.tenderTitle + '</h3><p>' + t.procuringAgencyName + '</p></div>').join('');
+  document.getElementById('nx').disabled = !j.data.hasNext;
+}
+document.getElementById('nx').onclick = () => { page++; show(); };
+fetch('/api/menu').then(r => r.json());
+show();
+</script></body></html>

@@ -1,0 +1,526 @@
+# Relevance rules for Tender Watch.
+# Each term is a regular-expression fragment matched (case-insensitive, whole words) against the tender title.
+# strong terms = 3 points, medium = 2, weak = 1 (weak terms are also matched against the organisation).
+# A tender is RELEVANT when it hits at least one strong/medium term AND score >= threshold.
+# exclude terms subtract exclude_penalty each (half when the title also has a strong term).
+# core: true categories are JBS core business; a strong hit there tags the tender CORE.
+# health_orgs / generic_supply: when the buyer is a hospital/lab, vague titles such as
+# "Generic Consumables" or "Life Saving Medical Supplies" count as medium terms (+ health_org_bonus).
+# Edit freely, then run:  python -m tw rescore
+threshold: 3
+exclude_penalty: 4
+works_type_penalty: 2
+health_org_bonus: 1
+categories:
+  Reagents & Kits:
+    core: true
+    strong:
+    - reagents?
+    - lab reagents?
+    - chemicals? (and|&) reagents?
+    - reagent rental
+    - reference standards?
+    - culture media
+    - diagnostic kits?
+    - test kits?
+    - lab kits?
+    - assay kits?
+    - detection kits?
+    - kits? (and|&) reagents?
+    - reagents? (and|&) kits?
+    - proficiency testing
+    medium: []
+  Genomics & NGS:
+    core: true
+    strong:
+    - NGS
+    - next[- ]generation sequenc\w*
+    - sequenc(er|ers|ing)
+    - genom\w*
+    - exome
+    - whole genome
+    - bioinformatic\w*
+    - microarray\w*
+    - cytogenetic\w*
+    - karyotyp\w*
+    - genotyp\w*
+    - metagenom\w*
+    - transcriptom\w*
+    medium:
+    - genetic\w*
+    - gene
+    - genes
+    - DNA
+    - RNA
+    - HLA
+  Molecular Biology & PCR:
+    core: true
+    strong:
+    - PCR
+    - RT-?PCR
+    - qPCR
+    - real[- ]time PCR
+    - thermal cycler\w*
+    - thermocycler\w*
+    - nucleic acid\w*
+    - molecular biology
+    - molecular diagnostic\w*
+    - primers?
+    - oligo\w*
+    - polymerase
+    - extraction kits?
+    - DNA extraction
+    - RNA extraction
+    - digital PCR
+    - dPCR
+    - gel doc\w*
+    - electrophoresis
+    medium:
+    - molecular
+    - viral load
+    - GeneXpert
+  ELISA & Immunoassay:
+    core: true
+    strong:
+    - ELISA
+    - immunoassay\w*
+    - chemiluminescen\w*
+    - CLIA
+    - ECLIA
+    - antibod(y|ies)
+    - antigens?
+    - monoclonal
+    - polyclonal
+    - serolog\w*
+    - immunohistochem\w*
+    - IHC
+    - flow cytomet\w*
+    - western blot
+    medium:
+    - rapid (diagnostic )?test\w*
+    - RDTs?
+    - hormones?
+    - tumou?r markers?
+    - HbA1c
+    - hepatitis
+    - HIV
+    - dengue
+    - malaria
+    - tuberculosis
+    - TB
+    - CRP
+    - blood grouping
+    - typing sera
+    - HBsAg
+    - HCV
+  Vaccines & Biologicals:
+    core: true
+    strong:
+    - vaccin\w*
+    - biologic(s|al|als)
+    - biosimilar\w*
+    - immunoglobulin\w*
+    - anti-?sera
+    - antiserum
+    - anti-?venom
+    - anti-?rabies
+    - cell culture
+    - cell lines?
+    - tissue culture
+    - insulin
+    - monoclonal antibod\w*
+    - plasma derived
+    - blood products?
+    - biotechnolog\w*
+    - biotech
+    - bio-?safety cabinets?
+    - cold chain
+    medium:
+    - serum
+    - sera
+    - blood bags?
+    - blood bank\w*
+    - EPI
+  Laboratory Equipment & Consumables:
+    core: false
+    strong:
+    - laborator(y|ies)
+    - lab equipments?
+    - lab items?
+    - lab chemicals?
+    - lab consumables?
+    - glassware
+    - centrifuges?
+    - microscop\w*
+    - incubators?
+    - autoclaves?
+    - laminar (air )?flow
+    - fume hoods?
+    - ultra[- ]low
+    - '-80'
+    - deep freezers?
+    - spectrophotomet\w*
+    - HPLC
+    - chromatograph\w*
+    - mass spectromet\w*
+    - LC-?MS
+    - GC-?MS
+    - ICP
+    - analy[sz]ers?
+    - hematology
+    - haematology
+    - biochemistry
+    - chemistry analy[sz]er\w*
+    - urine analy[sz]er\w*
+    - pipettes?
+    - micropipettes?
+    - histopatholog\w*
+    - microbiolog\w*
+    - patholog\w*
+    - diagnostic\w*
+    - scientific equipments?
+    - research equipments?
+    - fermenters?
+    - bioreactors?
+    - lyophili[sz]\w*
+    - freeze dryers?
+    - water purification
+    - ultrapure water
+    - pH meters?
+    - shakers?
+    - vortex\w*
+    - water baths?
+    - hot air ovens?
+    - coagulation
+    - blood gas
+    - electrolyte analy[sz]er\w*
+    - cryo\w*
+    - liquid nitrogen
+    - plasticware
+    - consumables for lab\w*
+    - analytical balances?
+    - weighing balances?
+    - test tubes?
+    - petri dish\w*
+    - vacutainers?
+    - blood collection tubes?
+    medium:
+    - labs?
+    - chemicals?
+    - biomedical
+    - cuvettes?
+    - stains?
+    - calibration of (lab|laboratory|medical|biomedical|scientific)\w*
+  Pharmaceuticals & Medical Supplies:
+    core: false
+    strong:
+    - medicines?
+    - drugs?
+    - pharmaceutical\w*
+    - pharmacy
+    - injections?
+    - infusions?
+    - tablets?
+    - capsules?
+    - antibiotic\w*
+    - surgical (items|disposables?|instruments?|consumables?)
+    - medical (devices?|equipments?|supplies|consumables?|disposables?|gases?|stores?)
+    - LPDD
+    - LP of medicines?
+    - local purchase of medicines?
+    - disposables?
+    - sutures?
+    - syringes?
+    - cannula\w*
+    - dental materials?
+    - anaesthesia items?
+    - anesthesia items?
+    - X-?ray films?
+    - radiology
+    - dialysis
+    - hospital equipments?
+    - ICU equipments?
+    - surgery
+    - cardiac
+    - cardiology
+    - cath ?lab\w*
+    - stents?
+    - electrophysiology
+    - stroke
+    - ICU
+    - CCU
+    - ventilators?
+    - ultrasound
+    - ECG
+    - EEG
+    - patient monitors?
+    - anaesthesia machines?
+    - anesthesia machines?
+    - operation theat(er|re)s?
+    - OT equipments?
+    - imaging films?
+    - laser films?
+    - endoscop\w*
+    - C-?arm
+    - CT scan\w*
+    - MRI
+    - mammograph\w*
+    - defibrillators?
+    - infusion pumps?
+    - syringe pumps?
+    - hospital beds?
+    - medical gas\w*
+    medium:
+    - medical
+    - surgical
+    - dental
+    - clinical
+    - therapeutic
+    - oxygen
+    - telemedicine
+    - ophthalm\w*
+    - ENT
+    - orthopa?edic\w*
+    - implants?
+  Research & Services:
+    core: false
+    strong:
+    - research project
+    - NRPU
+    - R&D
+    - research and development
+    - testing services?
+    - lab(oratory)? services?
+    - diagnostic services?
+    - outsourc\w* of lab\w*
+    - clinical trials?
+    - maintenance of (lab|laboratory|medical|biomedical) \w*
+    - AMC of (lab|laboratory|medical|biomedical)\w*
+    - genetic testing
+    - sample transport\w*
+    medium:
+    - research
+    - HEC
+    - PCSIR
+    - NIH
+    - DRAP
+    - PARC
+    - NARC
+    - NIBGE
+    - NIGAB
+    - KIBGE
+    - ICCBS
+    - CEMB
+weak:
+- hospitals?
+- health
+- healthcare
+- medical college
+- medical university
+- universit(y|ies)
+- institute of
+- research cent(er|re)
+- DHQ
+- THQ
+- BHU
+- RHC
+- teaching hospital
+- health department
+- livestock
+- veterinary
+- agricultur\w* research
+- food authority
+- forensic\w*
+- public health laborator\w*
+- health authority
+- equipments?
+- instruments?
+- kits?
+- consumables
+- scientific
+- slides?
+- media
+- calibration
+exclude:
+- public health engineering
+- water supply
+- drinking water
+- sewer\w*
+- drainage
+- construction
+- civil works?
+- road\w*
+- bridges?
+- building works?
+- renovation
+- repair\w* (of|and) (building|road|roof|boundary|wall)\w*
+- boundary walls?
+- uniforms?
+- shoes
+- furniture
+- stationery
+- printing
+- vehicles?
+- tyres?
+- tires
+- motorcycles?
+- buses
+- fuel
+- petrol
+- POL
+- security (services|guards?)
+- janitorial
+- sanitary workers?
+- cleaning services
+- catering
+- food items?
+- food commodities
+- ration
+- renting
+- rent out
+- hiring of (building|space|premises|vehicles?)
+- auction
+- disposal of
+- scrap
+- insurance
+- solar\w*
+- CCTV
+- cameras?
+- laptops?
+- computers?
+- printers?
+- photocopier\w*
+- IT equipment
+- software
+- network(ing)? equipment
+- air condition\w*
+- generators?
+- electrical works?
+- manpower
+- outsourcing of (staff|manpower)
+- advertis\w*
+- event management
+- stall
+- cafeteria
+- canteen
+- horticulture
+- parks?
+- forest\w*
+- irrigation
+- canal
+- dams?
+- weighbridge\w*
+- waste management
+- solid waste
+- bedding
+- linen
+- laundry
+- robotics
+- training material
+- computer labs?
+- IT labs?
+- language labs?
+- telephone\w*
+- toners?
+- fire (fighting )?equipments?
+- office equipments?
+- gym\w*
+- welding
+- carpentry
+- workshops?
+- associates
+- corrosion
+- injection (skid|mou?ld\w*)
+- transformers?
+- furnace
+- water pumps?
+- pumping
+- (power|energy) analy[sz]ers?
+- CT ?/ ?PT
+- (primary|secondary) injection
+- injection (test|grade)
+- HDPE
+- tapes?
+- split AC'?s?
+- air conditioners?
+- hired lab
+- human resource
+- inverters?
+- UPS
+- lifts?
+- elevators?
+- water bottles?
+- dispensers?
+- fire safety
+- (electrical|electronics?|civil|geotech\w*|survey|IOT|communication|computer|IT|robotics|language|mechanical|engineering|MTS|makerspace|textile|media|skills?) labs?
+- repair of transport
+- transport
+- dietary
+- petty
+- fixtures?
+- zakat fund
+- stationery printing
+- examination department
+- cyber\w*
+- artificial intelligence
+- energy studies
+- software laborator\w*
+- hiring of (security|services)
+- inject(ion)? sets?
+- power analy[sz]ers?
+- energy analy[sz]ers?
+- security services
+- IoT
+- 'chemist for discount'
+- 'laundry( services)?'
+- '(hold )?baggage'
+- 'metallurgical'
+- "IT equipment'?s?"
+- '\d*x ?computer labs?'
+- 'janitorial'
+- 'human resource for'
+health_orgs:
+- hospitals?
+- health (officer|department|services|authority|directorate)
+- district health
+- medical (college|university|centre|center|sciences|institute|superintendent)
+- institute of (medical|child health|cardio\w*|trauma|kidney|liver|nuclear|oncology|health)
+- nuclear (medicine|institute)
+- cancer
+- blood (bank|cent(er|re)|transfusion)
+- thalass\w*
+- lab(oratory|oratories)?
+- CB Lab
+- diagnos\w*
+- patholog\w*
+- vaccine production
+- drug testing
+- DRAP
+- NIH
+- National Institutes? of Health
+- THQ
+- DHQ
+- RHC
+- BHU
+- MCH
+- dispensar(y|ies)
+- clinics?
+- maternity
+- trauma
+- cardio\w*
+- veterinary research
+generic_supply:
+- generic consumables?
+- specific consumables?
+- consumables?
+- chemicals?
+- life saving
+- medical supplies
+- machinery (and|&|/) equipments?
+- medical (and|&) laboratory equipments?
+- equipments?
+- instruments?
+- kits?
+- reagents?
+- supplies
+- L\.?P\.? medic\w*

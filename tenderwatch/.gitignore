@@ -1,0 +1,6 @@
+# Everything Tender Watch collects or remembers stays on your PC
+data/
+config/settings.yaml
+.venv/
+__pycache__/
+.pytest_cache/

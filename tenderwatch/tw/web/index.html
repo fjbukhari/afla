@@ -1,0 +1,654 @@
+<title>JBS Tender Watch</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: masthead + status strip, then a sticky filter rail beside a dense tender list (cards or table).
+   Palette carried over from the first Tender Watch: government-seal green on cool paper, violet for CORE. */
+:root{
+  --paper:#f4f7f5; --surface:#ffffff; --sunk:#eaf0ed; --line:#d5dfdb; --line-soft:#e6ece9;
+  --ink:#10262e; --ink-2:#3e5660; --ink-3:#627880;
+  --seal:#1d6b50; --seal-ink:#ffffff; --seal-soft:#e0f0e8;
+  --amber:#8f5409; --amber-soft:#fbefd9; --red:#b3261e; --red-soft:#fbe4e1;
+  --core:#6a3fa0; --core-soft:#efe7f8; --sel:#fff7d6; --scrim:rgba(8,20,24,.45);
+  --shadow:0 1px 2px rgba(16,38,46,.06),0 8px 24px rgba(16,38,46,.12);
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --paper:#0d171b; --surface:#132228; --sunk:#0f1d22; --line:#243a42; --line-soft:#1c3037;
+  --ink:#dfe9ec; --ink-2:#a9bcc2; --ink-3:#8198a0;
+  --seal:#4cb98d; --seal-ink:#07140f; --seal-soft:#173a2e;
+  --amber:#e0a44a; --amber-soft:#3a2a12; --red:#f08579; --red-soft:#3d1b18;
+  --core:#b996e8; --core-soft:#2c2140; --sel:#2e2a14; --scrim:rgba(0,0,0,.6); --shadow:0 8px 24px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0d171b; --surface:#132228; --sunk:#0f1d22; --line:#243a42; --line-soft:#1c3037;
+  --ink:#dfe9ec; --ink-2:#a9bcc2; --ink-3:#8198a0;
+  --seal:#4cb98d; --seal-ink:#07140f; --seal-soft:#173a2e;
+  --amber:#e0a44a; --amber-soft:#3a2a12; --red:#f08579; --red-soft:#3d1b18;
+  --core:#b996e8; --core-soft:#2c2140; --sel:#2e2a14; --scrim:rgba(0,0,0,.6); --shadow:0 8px 24px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--sans);margin:0}
+a{color:var(--seal)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+input[type=checkbox]{accent-color:var(--seal);width:15px;height:15px;margin:0;cursor:pointer}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:20px;padding-block:16px 40px}
+@media (max-width:560px){.wrap{padding-inline:16px}}
+
+.mast{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.mast h1{margin:6px 0 0;font-size:28px;line-height:1.1;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.mast h1 span{color:var(--seal)}
+.meta{font:12px/1.6 var(--mono);color:var(--ink-2);display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){.meta{align-items:flex-start}.btns{justify-content:flex-start}}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:5px 10px;font-size:13px;cursor:pointer;line-height:1.4;white-space:nowrap}
+.btn:hover{background:var(--sunk)}
+.btn.primary{background:var(--seal);border-color:var(--seal);color:var(--seal-ink);font-weight:600}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:2px 8px;font-size:12px}
+.linkbtn{background:none;border:0;padding:0;color:var(--seal);cursor:pointer;font-size:12.5px;text-decoration:underline}
+
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:14px 0 10px}
+.stat{background:var(--surface);padding:10px 14px;cursor:pointer;text-align:left;border:0;display:flex;flex-direction:column;gap:2px}
+.stat:hover{background:var(--sunk)}
+.stat .n{font:700 24px/1.1 var(--sans);font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px;color:var(--ink-2)}
+.stat.core .n{color:var(--core)} .stat.soon .n{color:var(--red)} .stat.new .n{color:var(--seal)} .stat.warn .n{color:var(--amber)}
+
+.srcbox{margin-bottom:14px}
+.srcbox summary{cursor:pointer;font-size:12.5px;color:var(--ink-2);padding:2px 0 8px;width:max-content;max-width:100%}
+.srcbox summary b{color:var(--ink)}
+.sources{display:flex;flex-wrap:wrap;gap:6px}
+.meta .btn{font-family:var(--sans)}
+.src{display:inline-flex;align-items:center;gap:6px;text-align:left;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px 3px 8px;font-size:12px;color:var(--ink-2);cursor:pointer}
+.src i{width:8px;height:8px;border-radius:50%;background:var(--seal);display:inline-block;flex:none}
+.src.login i{background:var(--core)} .src.bad i{background:var(--amber)} .src.never i{background:var(--line)}
+.src.bad,.src.login,.src.never{border-style:dashed}
+.src b{font-weight:600;color:var(--ink)}
+.srcgroup{font:600 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);align-self:center;margin-right:2px}
+.srcgroup:not(:first-child){margin-left:10px}
+
+.grid{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+.filters{position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);max-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 20px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px}
+@media (max-width:920px){.filters{position:static;max-height:none}}
+.fgroup{display:flex;flex-direction:column;gap:6px}
+.lab{font:600 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.filters input[type=search],.filters select{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:7px 9px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--ink-2)}
+.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.chip .c{font-family:var(--mono);opacity:.7;margin-left:4px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);cursor:pointer}
+.check input{margin-top:3px}
+.range{display:flex;align-items:center;gap:8px}
+.range input{flex:1;min-width:0}
+.range output{font:500 13px var(--mono);min-width:1.5em;text-align:right}
+.hint{font-size:11.5px;color:var(--ink-3);line-height:1.4}
+
+.bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.bar>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.count{font-weight:700}
+.count small{font-weight:400;color:var(--ink-3)}
+.bar select{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:5px 8px;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 11px;font-size:13px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.selbar{background:var(--sel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden}
+.row{display:grid;grid-template-columns:34px 96px minmax(0,1fr);border-top:1px solid var(--line-soft)}
+.row:first-child{border-top:0}
+.row.is-core{box-shadow:inset 3px 0 0 var(--core)}
+.row.selected{background:var(--sel)}
+.row.muted{opacity:.55}
+.pick{display:flex;justify-content:center;padding-top:14px;border-right:1px solid var(--line-soft)}
+.due{padding:12px 10px;border-right:1px solid var(--line-soft);display:flex;flex-direction:column;align-items:flex-start;gap:3px;background:var(--sunk)}
+.row.selected .due{background:transparent}
+.due .d{font:600 13px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border-radius:3px;padding:1px 6px;font:600 11px/1.5 var(--sans);white-space:nowrap}
+.pill.red{background:var(--red-soft);color:var(--red)} .pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.ok{background:var(--seal-soft);color:var(--seal)} .pill.grey{background:var(--line-soft);color:var(--ink-3)}
+.body{padding:11px 14px;min-width:0;display:flex;flex-direction:column;gap:5px}
+.title{font-weight:600;font-size:14.5px;line-height:1.35;color:var(--ink);text-decoration:none;overflow-wrap:anywhere}
+.title:hover{text-decoration:underline}
+.org{color:var(--ink-2);font-size:13px;overflow-wrap:anywhere}
+.tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tag{font-size:11px;border-radius:3px;padding:1px 6px;background:var(--line-soft);color:var(--ink-2)}
+.tag.core{background:var(--core-soft);color:var(--core);font-weight:700;letter-spacing:.04em}
+.tag.new{background:var(--seal-soft);color:var(--seal);font-weight:700}
+.tag.dup{background:var(--amber-soft);color:var(--amber)}
+.ref{font:12px var(--mono);color:var(--ink-3);overflow-wrap:anywhere}
+.why{font-size:11.5px;color:var(--ink-3)}
+.actions{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12.5px}
+.actions a{text-decoration:none} .actions a:hover{text-decoration:underline}
+.statussel{border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:2px 6px;font-size:12px}
+.notebox{display:flex;gap:6px;align-items:flex-start}
+.notebox textarea{flex:1;min-width:0;min-height:52px;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:6px 8px;font-size:13px;resize:vertical}
+.saved-note{font-size:12.5px;color:var(--ink-2);background:var(--sunk);border-radius:4px;padding:5px 8px;white-space:pre-wrap}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-3)}
+.more{margin:12px auto 0;display:block}
+@media (max-width:560px){
+  .row{grid-template-columns:34px minmax(0,1fr)}
+  .due{grid-column:2;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line-soft);padding:7px 12px}
+  .pick{grid-row:span 2}
+  .body{grid-column:2}
+}
+
+.tablewrap{border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:auto;max-height:calc(100vh - 150px)}
+table.t{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+.t th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:left;font:600 11.5px/1.3 var(--sans);letter-spacing:.03em;color:var(--ink-2);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+.t th .arr{font-size:10px;color:var(--seal);margin-left:3px}
+.t td{padding:7px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.t tr:hover td{background:var(--sunk)}
+.t tr.selected td{background:var(--sel)}
+.t tr.is-core td:first-child{box-shadow:inset 3px 0 0 var(--core)}
+.t td.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.t td.tt{min-width:280px;max-width:520px}
+.t td.tt a{color:var(--ink);font-weight:600;text-decoration:none}
+.t td.oo{min-width:170px;max-width:280px;color:var(--ink-2)}
+
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:max(40px,env(safe-area-inset-top,0px)) 16px 16px;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);width:min(640px,100%);padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.modal h2{margin:0;font-size:18px}
+.modal p{margin:0;color:var(--ink-2)}
+.modal textarea,.modal input[type=text]{border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:7px 9px;font-size:13px;width:100%}
+.modal textarea{min-height:180px;font-family:var(--mono);font-size:12px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.rcpts{display:flex;flex-wrap:wrap;gap:6px}
+.rcpts label{display:flex;gap:6px;align-items:center;font-size:13px;border:1px solid var(--line);border-radius:4px;padding:4px 8px;cursor:pointer}
+pre.log{margin:0;max-height:50vh;overflow:auto;background:var(--sunk);border-radius:4px;padding:8px 10px;font:12px/1.45 var(--mono);white-space:pre-wrap;color:var(--ink-2)}
+.srcinfo dt{font-weight:600;font-size:12px;color:var(--ink-3)}
+.srcinfo dd{margin:0 0 8px;overflow-wrap:anywhere}
+code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px 5px;border-radius:3px}
+
+.foot{margin-top:28px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between}
+.foot b{color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:4px;font-size:13px;box-shadow:var(--shadow);z-index:60;max-width:90vw}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <div class="eyebrow">JB Scientific · Procurement intelligence</div>
+      <h1>Tender <span>Watch</span></h1>
+    </div>
+    <div class="meta">
+      <div id="updated">Loading…</div>
+      <div class="btns">
+        <button class="btn primary" id="runBtn" type="button" hidden>Check portals now</button>
+        <button class="btn" id="logBtn" type="button" hidden>Run log</button>
+        <button class="btn" id="themeBtn" type="button">Theme: system</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="strip" id="strip"></div>
+  <details class="srcbox" id="srcbox">
+    <summary id="srcsum">Portals</summary>
+    <div class="sources" id="sources" aria-label="Portals"></div>
+  </details>
+
+  <div class="grid">
+    <aside class="filters" aria-label="Filters">
+      <div class="fgroup">
+        <label class="lab" for="q">Search</label>
+        <input type="search" id="q" placeholder="e.g. PCR, reagents, NIH">
+        <div class="hint">All words must appear in the title, buyer or reference.</div>
+      </div>
+      <div class="fgroup"><span class="lab">Category</span><div class="chips" id="catChips"></div></div>
+      <div class="fgroup"><span class="lab">Region</span><div class="chips" id="regChips"></div></div>
+      <div class="fgroup">
+        <label class="lab" for="source">Portal</label>
+        <select id="source"></select>
+      </div>
+      <div class="fgroup">
+        <label class="lab" for="closing">Closing</label>
+        <select id="closing">
+          <option value="open">Still open</option>
+          <option value="3">Within 3 days</option>
+          <option value="7">Within 7 days</option>
+          <option value="14">Within 14 days</option>
+          <option value="all">Include closed</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label class="lab" for="seen">First seen</label>
+        <select id="seen">
+          <option value="any">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="3">Last 3 days</option>
+          <option value="7">Last 7 days</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label class="lab" for="status">Team status</label>
+        <select id="status">
+          <option value="active">All except ignored</option>
+          <option value="">Everything</option>
+          <option value="none">No status yet</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label class="lab" for="thr">Relevance threshold</label>
+        <div class="range"><input type="range" id="thr" min="1" max="12" step="1"><output id="thrOut" for="thr"></output></div>
+        <div class="hint">Lower it to see borderline tenders; raise it for strong matches only.</div>
+      </div>
+      <label class="check"><input type="checkbox" id="coreOnly"> Core only (NGS, PCR, ELISA, reagents &amp; kits, vaccines, biologicals)</label>
+      <label class="check"><input type="checkbox" id="showDups"> Show copies of the same tender on other portals</label>
+      <button class="btn" id="reset" type="button">Reset filters</button>
+    </aside>
+
+    <main>
+      <div class="bar">
+        <div><span class="count" id="count"></span></div>
+        <div>
+          <div class="seg" role="group" aria-label="View">
+            <button type="button" id="vCards" aria-pressed="true">Cards</button>
+            <button type="button" id="vTable" aria-pressed="false">Table</button>
+          </div>
+          <select id="sort" aria-label="Sort">
+            <option value="closing">Closing soonest</option>
+            <option value="new">Newest first</option>
+            <option value="score">Best match</option>
+          </select>
+        </div>
+      </div>
+      <div class="bar">
+        <div>
+          <label class="check" style="align-items:center"><input type="checkbox" id="pageAll"> Select all shown</label>
+          <button class="linkbtn" id="selAll" type="button">Select all matching</button>
+          <button class="linkbtn" id="selNone" type="button">Clear</button>
+        </div>
+        <div>
+          <button class="btn" id="csvBtn" type="button">Copy for Excel</button>
+          <button class="btn primary" id="shareBtn" type="button">Share list</button>
+        </div>
+      </div>
+      <div class="bar selbar" id="selbar" hidden>
+        <div><b id="selN"></b> selected</div>
+        <div>
+          <label class="hint" for="bulkStatus">Set status</label>
+          <select id="bulkStatus" class="statussel"></select>
+        </div>
+      </div>
+      <div id="view"></div>
+      <button class="btn more" id="more" type="button" hidden>Show more</button>
+    </main>
+  </div>
+
+  <footer class="foot">
+    <div><b>Property of JB Scientific.</b> For internal use. Confirm dates and documents on the official portal before bidding.</div>
+    <div id="mode"></div>
+  </footer>
+</div>
+
+<div class="scrim" id="shareScrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <h2 id="shareTitle">Share tenders</h2>
+    <p id="shareWhat"></p>
+    <div class="rcpts" id="rcpts"></div>
+    <label class="lab" for="shareText">Message</label>
+    <textarea id="shareText"></textarea>
+    <div class="acts">
+      <button class="btn" id="shareClose" type="button">Close</button>
+      <button class="btn" id="shareCopy" type="button">Copy text</button>
+      <a class="btn primary" id="shareMail" href="#" target="_blank" rel="noopener" style="text-decoration:none">Open in email</a>
+    </div>
+  </div>
+</div>
+<div class="scrim" id="infoScrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <h2 id="infoTitle"></h2>
+    <div id="infoBody"></div>
+    <div class="acts"><button class="btn" id="infoClose" type="button">Close</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>window.TW_FEED = null;</script>
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k, d){ try { const v = localStorage.getItem('tw2.' + k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem('tw2.' + k, JSON.stringify(v)); } catch(e){} }
+};
+const STATUS = {interested:'Interested', bidding:'Preparing bid', submitted:'Bid submitted', won:'Won', lost:'Lost', ignored:'Ignored'};
+let FEED = null, LIVE = false, NOTES = {}, SHOWN = 60, SEL = new Set(), VIEW = store.get('view', 'cards'), TSORT = store.get('tsort', null);
+const today = new Date(); today.setHours(0,0,0,0);
+const DEF = {q:'', cats:[], regions:[], source:'', closing:'open', seen:'any', status:'active', thr:null, coreOnly:false, showDups:false, sort:'closing'};
+let F = Object.assign({}, DEF, store.get('filters', {}));
+
+function toast(m, ms){ const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms || 2800); }
+async function copy(text){ try { await navigator.clipboard.writeText(text); toast('Copied'); return true; } catch(e){ toast('Copy was blocked. Select the text and press Ctrl+C.'); return false; } }
+
+/* theme */
+const THEMES = ['system','light','dark'];
+let theme = store.get('theme', 'system');
+function applyTheme(){ if (theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme); $('#themeBtn').textContent = 'Theme: ' + theme; }
+$('#themeBtn').onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; store.set('theme', theme); applyTheme(); };
+applyTheme();
+
+/* data */
+async function load(){
+  if (window.TW_FEED) { FEED = window.TW_FEED; }
+  else {
+    try { const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) FEED = await r.json(); } catch(e){}
+  }
+  if (!FEED) { $('#updated').textContent = 'No data'; $('#view').innerHTML = '<div class="empty">No tender data yet. On the Tender Watch PC run <code>python -m tw run</code>, then reload.</div>'; return; }
+  LIVE = !!FEED.live;
+  NOTES = LIVE ? (FEED.notes || {}) : Object.assign({}, FEED.notes || {}, store.get('notes', {}));
+  for (const t of FEED.tenders) { t._q = (t.title + ' ' + t.org + ' ' + (t.ref || '') + ' ' + t.source_name).toLowerCase(); }
+  if (F.thr == null) F.thr = FEED.threshold;
+  init(); render();
+}
+
+function daysLeft(t){ if (!t.closing) return null; return Math.round((new Date(t.closing + 'T00:00:00') - today) / 864e5); }
+function ageDays(t){ const d = new Date((t.first_seen || '').replace(' ', 'T')); return isNaN(d) ? 999 : (Date.now() - d) / 864e5; }
+function fmtDate(s){ if (!s) return '—'; const d = new Date(s + 'T00:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
+function relevant(t){ return t.has_sm && t.score >= F.thr; }
+function statusOf(t){ return (NOTES[t.id] || {}).status || ''; }
+function isOpen(t){ const d = daysLeft(t); return d === null || d >= 0; }
+function srcOf(id){ return (FEED.sources || []).find(s => s.id === id) || {}; }
+
+function filtered(ignore){
+  const words = F.q.toLowerCase().split(/\s+/).filter(Boolean);
+  return FEED.tenders.filter(t => {
+    if (!relevant(t)) return false;
+    if (!F.showDups && t.dup_of) return false;
+    if (F.coreOnly && !t.core) return false;
+    if (ignore !== 'cats' && F.cats.length && !F.cats.some(c => t.categories.includes(c))) return false;
+    if (ignore !== 'regions' && F.regions.length && !F.regions.includes(t.region)) return false;
+    if (F.source && t.source !== F.source) return false;
+    const d = daysLeft(t);
+    if (F.closing === 'open' && d !== null && d < 0) return false;
+    if (/^\d+$/.test(F.closing) && (d === null || d < 0 || d > +F.closing)) return false;
+    if (F.seen !== 'any' && ageDays(t) > +F.seen) return false;
+    const st = statusOf(t);
+    if (F.status === 'active' && st === 'ignored') return false;
+    if (F.status === 'none' && st) return false;
+    if (F.status && !['active','none'].includes(F.status) && st !== F.status) return false;
+    return words.every(w => t._q.includes(w));
+  });
+}
+function sorted(list){
+  const by = {closing: t => (t.closing || '9999') + t.title, new: t => t.first_seen, score: t => -t.score};
+  const f = by[F.sort];
+  const out = list.slice().sort((a, b) => { const x = f(a), y = f(b); return x < y ? -1 : x > y ? 1 : 0; });
+  if (F.sort === 'new') out.reverse();
+  if (VIEW === 'table' && TSORT) {
+    const c = COLS.find(c => c.k === TSORT.k);
+    if (c) out.sort((a, b) => { const x = c.sort(a), y = c.sort(b); return (x < y ? -1 : x > y ? 1 : 0) * (TSORT.dir || 1); });
+  }
+  return out;
+}
+
+/* init controls */
+function init(){
+  $('#updated').textContent = 'Updated ' + new Date(FEED.generated.replace(' ', 'T')).toLocaleString('en-GB', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  $('#runBtn').hidden = $('#logBtn').hidden = !LIVE;
+  $('#mode').textContent = LIVE ? 'Live on this PC: status and notes are shared with everyone using this dashboard.' : 'Snapshot copy: status and notes you set here stay in this browser only.';
+  const opts = Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  $('#status').insertAdjacentHTML('beforeend', opts);
+  $('#bulkStatus').innerHTML = '<option value="">Choose…</option>' + opts + '<option value="clear">Clear status</option>';
+  const srcs = [...new Map(FEED.tenders.map(t => [t.source, t.source_name])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  $('#source').innerHTML = '<option value="">All portals</option>' + srcs.map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join('');
+  $('#thr').max = Math.max(12, ...FEED.tenders.map(t => t.score));
+  for (const id of ['q','source','closing','seen','status','sort']) {
+    const el = $('#' + id); el.value = F[id];
+    el.addEventListener(id === 'q' ? 'input' : 'change', () => { F[id] = el.value; SHOWN = 60; render(); });
+  }
+  $('#thr').value = F.thr; $('#thr').oninput = () => { F.thr = +$('#thr').value; SHOWN = 60; render(); };
+  for (const id of ['coreOnly','showDups']) { const el = $('#' + id); el.checked = F[id]; el.onchange = () => { F[id] = el.checked; render(); }; }
+  $('#reset').onclick = () => { F = Object.assign({}, DEF, {thr: FEED.threshold}); for (const id of ['q','source','closing','seen','status','sort']) $('#' + id).value = F[id]; $('#thr').value = F.thr; $('#coreOnly').checked = $('#showDups').checked = false; render(); };
+  $('#catChips').onclick = e => chipToggle(e, 'cats');
+  $('#regChips').onclick = e => chipToggle(e, 'regions');
+  $('#vCards').onclick = () => { VIEW = 'cards'; store.set('view', VIEW); render(); };
+  $('#vTable').onclick = () => { VIEW = 'table'; store.set('view', VIEW); render(); };
+  $('#more').onclick = () => { SHOWN += 60; render(); };
+  $('#selAll').onclick = () => { filtered().forEach(t => SEL.add(t.id)); render(); };
+  $('#selNone').onclick = () => { SEL.clear(); render(); };
+  $('#pageAll').onchange = e => { current.slice(0, SHOWN).forEach(t => e.target.checked ? SEL.add(t.id) : SEL.delete(t.id)); render(); };
+  $('#bulkStatus').onchange = e => { const v = e.target.value; if (!v) return; setNote([...SEL], {status: v === 'clear' ? '' : v}); e.target.value = ''; };
+  $('#csvBtn').onclick = () => copy(tsv(pickList()));
+  $('#shareBtn').onclick = openShare;
+  $('#shareClose').onclick = () => $('#shareScrim').hidden = true;
+  $('#shareCopy').onclick = () => copy($('#shareText').value);
+  $('#infoClose').onclick = () => $('#infoScrim').hidden = true;
+  for (const s of ['#shareScrim','#infoScrim']) $(s).onclick = e => { if (e.target === $(s)) $(s).hidden = true; };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#shareScrim').hidden = true; $('#infoScrim').hidden = true; } });
+  $('#runBtn').onclick = startRun;
+  $('#logBtn').onclick = showLog;
+  renderSources();
+}
+function chipToggle(e, key){ const b = e.target.closest('.chip'); if (!b) return; const v = b.dataset.v; F[key] = F[key].includes(v) ? F[key].filter(x => x !== v) : F[key].concat(v); SHOWN = 60; render(); }
+
+function renderSources(){
+  const groups = {};
+  for (const s of FEED.sources.filter(s => s.enabled)) (groups[s.group || 'Other'] = groups[s.group || 'Other'] || []).push(s);
+  $('#sources').innerHTML = Object.entries(groups).map(([g, list]) => `<span class="srcgroup">${esc(g)}</span>` + list.map(s => {
+    const cls = s.status === 'ok' ? '' : s.status === 'needs_login' ? ' login' : s.status === 'never' ? ' never' : ' bad';
+    const label = s.status === 'ok' ? s.relevant : s.status === 'needs_login' ? 'sign in' : s.status === 'never' ? 'not run' : s.status === 'empty' ? 'no list' : 'error';
+    return `<button type="button" class="src${cls}" data-id="${esc(s.id)}"><i></i><b>${esc(s.name)}</b> ${esc(label)}</button>`;
+  }).join('')).join('');
+  const en = FEED.sources.filter(s => s.enabled), ok = en.filter(s => s.status === 'ok').length;
+  $('#srcsum').innerHTML = `Portals: <b>${ok} of ${en.length}</b> read on the last run` + (en.length - ok ? ` · <b>${en.length - ok}</b> need attention` : '');
+  if (renderSources.first === undefined) { renderSources.first = false; $('#srcbox').open = store.get('srcOpen', window.innerWidth > 700); $('#srcbox').ontoggle = () => store.set('srcOpen', $('#srcbox').open); }
+  $('#sources').onclick = e => { const b = e.target.closest('.src'); if (b) sourceInfo(srcOf(b.dataset.id)); };
+}
+function sourceInfo(s){
+  const fix = {
+    needs_login: `This portal needs your account. On the Tender Watch PC run <code>python -m tw login ${esc(s.id)}</code> and sign in in the window that opens. To sign in automatically next time, run <code>python -m tw set-login ${esc(s.id)}</code>.`,
+    empty: `The page opened but no tender list was recognised; the site may have changed. Run <code>python -m tw test ${esc(s.id)} --show</code> to watch it, and send the saved page <code>data/captures/${esc(s.id)}.html</code> for a fix.`,
+    error: `The portal could not be read (often the site is down or slow). It is retried on the next run. To look now: <code>python -m tw test ${esc(s.id)} --show</code>.`,
+    never: 'Not read yet. It will be read on the next run.',
+    ok: `${s.rows} rows read, ${s.relevant} relevant.`,
+  }[s.status] || '';
+  $('#infoTitle').textContent = s.name;
+  $('#infoBody').innerHTML = `<dl class="srcinfo">
+    <dt>Status</dt><dd>${esc(s.status)}${s.error ? ' · ' + esc(s.error) : ''}</dd>
+    <dt>What to do</dt><dd>${fix}</dd>
+    <dt>Last run</dt><dd>${esc(s.last_run || '—')} · last success ${esc(s.last_ok || 'never')}</dd>
+    <dt>Portal</dt><dd><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>${s.login ? ' (sign-in portal)' : ''}</dd></dl>
+    <div class="acts">${F.source === s.id ? '' : `<button class="btn" type="button" id="onlySrc">Show only this portal</button>`}</div>`;
+  const b = $('#onlySrc'); if (b) b.onclick = () => { F.source = s.id; $('#source').value = s.id; $('#infoScrim').hidden = true; render(); };
+  $('#infoScrim').hidden = false;
+}
+
+/* stats */
+function renderStrip(){
+  const open = FEED.tenders.filter(t => relevant(t) && !t.dup_of && isOpen(t) && statusOf(t) !== 'ignored');
+  const soon = open.filter(t => { const d = daysLeft(t); return d !== null && d <= 7; }).length;
+  const fresh = open.filter(t => ageDays(t) <= 1).length;
+  const attn = FEED.sources.filter(s => s.enabled && s.status !== 'ok').length;
+  const cells = [
+    ['', open.length, 'Open relevant tenders', () => { F.closing = 'open'; F.coreOnly = false; F.seen = 'any'; }],
+    ['core', open.filter(t => t.core).length, 'Core business', () => { F.coreOnly = true; }],
+    ['soon', soon, 'Closing within 7 days', () => { F.closing = '7'; }],
+    ['new', fresh, 'New in last 24 hours', () => { F.seen = '1'; }],
+    ['warn', attn, 'Portals needing attention', null],
+  ];
+  $('#strip').innerHTML = cells.map((c, i) => `<button type="button" class="stat ${c[0]}" data-i="${i}"><span class="n">${c[1]}</span><span class="l">${c[2]}</span></button>`).join('');
+  $('#strip').onclick = e => {
+    const b = e.target.closest('.stat'); if (!b) return; const c = cells[+b.dataset.i];
+    if (!c[3]) { const s = FEED.sources.find(s => s.enabled && s.status !== 'ok'); if (s) sourceInfo(s); else toast('All portals were read on the last run'); return; }
+    c[3](); $('#closing').value = F.closing; $('#seen').value = F.seen; $('#coreOnly').checked = F.coreOnly; SHOWN = 60; render();
+  };
+}
+
+/* list */
+const COLS = [
+  {k:'closing', l:'Closing', sort:t => t.closing || '9999', td:t => `<td class="mono">${fmtDate(t.closing)}</td>`},
+  {k:'days', l:'Days', sort:t => daysLeft(t) ?? 9e9, td:t => `<td class="mono">${daysLeft(t) ?? '—'}</td>`},
+  {k:'title', l:'Tender', sort:t => t.title.toLowerCase(), td:t => `<td class="tt"><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>${t.core ? ' <span class="tag core">CORE</span>' : ''}</td>`},
+  {k:'org', l:'Buyer', sort:t => (t.org || '').toLowerCase(), td:t => `<td class="oo">${esc(t.org)}</td>`},
+  {k:'region', l:'Region', sort:t => t.region, td:t => `<td>${esc(t.region)}</td>`},
+  {k:'source', l:'Portal', sort:t => t.source_name, td:t => `<td>${esc(t.source_name)}</td>`},
+  {k:'ref', l:'Reference', sort:t => t.ref || '', td:t => `<td class="mono">${esc(t.ref)}</td>`},
+  {k:'score', l:'Score', sort:t => t.score, td:t => `<td class="mono">${t.score}</td>`},
+  {k:'status', l:'Status', sort:statusOf, td:t => `<td>${esc(STATUS[statusOf(t)] || '')}</td>`},
+];
+let current = [];
+function render(){
+  store.set('filters', F);
+  $('#thrOut').textContent = F.thr;
+  const base = filtered('cats'), baseR = filtered('regions');
+  $('#catChips').innerHTML = Object.keys(FEED.categories).map(c => `<button type="button" class="chip" data-v="${esc(c)}" aria-pressed="${F.cats.includes(c)}">${esc(c)}<span class="c">${base.filter(t => t.categories.includes(c)).length}</span></button>`).join('');
+  const regions = [...new Set(FEED.tenders.map(t => t.region).filter(Boolean))].sort();
+  $('#regChips').innerHTML = regions.map(r => `<button type="button" class="chip" data-v="${esc(r)}" aria-pressed="${F.regions.includes(r)}">${esc(r)}<span class="c">${baseR.filter(t => t.region === r).length}</span></button>`).join('');
+  $('#vCards').setAttribute('aria-pressed', VIEW === 'cards'); $('#vTable').setAttribute('aria-pressed', VIEW === 'table');
+  current = sorted(filtered());
+  const vis = current.slice(0, SHOWN);
+  $('#count').innerHTML = `${current.length} tender${current.length === 1 ? '' : 's'} <small>of ${FEED.tenders.filter(relevant).length} relevant</small>`;
+  $('#pageAll').checked = vis.length > 0 && vis.every(t => SEL.has(t.id));
+  $('#selbar').hidden = SEL.size === 0; $('#selN').textContent = SEL.size;
+  $('#shareBtn').textContent = SEL.size ? `Share ${SEL.size} selected` : 'Share list';
+  $('#csvBtn').textContent = SEL.size ? `Copy ${SEL.size} for Excel` : 'Copy for Excel';
+  renderStrip();
+  if (!current.length) { $('#view').innerHTML = '<div class="empty">No tenders match these filters. Try “Reset filters” or lower the relevance threshold.</div>'; $('#more').hidden = true; return; }
+  $('#view').innerHTML = VIEW === 'cards' ? cards(vis) : table(vis);
+  $('#more').hidden = current.length <= SHOWN;
+  bindRows();
+}
+function duePill(t){
+  const d = daysLeft(t);
+  if (d === null) return '<span class="pill grey">no date</span>';
+  if (d < 0) return '<span class="pill grey">closed</span>';
+  if (d === 0) return '<span class="pill red">today</span>';
+  return `<span class="pill ${d <= 3 ? 'red' : d <= 7 ? 'amber' : 'ok'}">${d} day${d === 1 ? '' : 's'}</span>`;
+}
+function copies(t){ const root = t.dup_of || t.id; return FEED.tenders.filter(x => x.id !== t.id && (x.dup_of === root || x.id === root)); }
+function cards(list){
+  return '<div class="list">' + list.map(t => {
+    const n = NOTES[t.id] || {}, st = n.status || '', dups = copies(t), home = srcOf(t.source).url === t.url;
+    return `<article class="row${t.core ? ' is-core' : ''}${SEL.has(t.id) ? ' selected' : ''}${st === 'ignored' ? ' muted' : ''}" data-id="${esc(t.id)}">
+      <div class="pick"><input type="checkbox" class="sel" aria-label="Select tender"${SEL.has(t.id) ? ' checked' : ''}></div>
+      <div class="due"><span class="d">${fmtDate(t.closing)}</span>${duePill(t)}</div>
+      <div class="body">
+        <a class="title" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
+        <div class="org">${esc(t.org || '—')}${t.location ? ' · ' + esc(t.location) : ''}</div>
+        <div class="tags">${t.core ? '<span class="tag core">CORE</span>' : ''}${ageDays(t) <= 1 ? '<span class="tag new">NEW</span>' : ''}${t.categories.slice(0, 2).map(c => `<span class="tag">${esc(c)}</span>`).join('')}<span class="tag">${esc(t.region)}</span><span class="tag">${esc(t.source_name)}</span>${dups.length ? `<span class="tag dup" title="${esc(dups.map(d => d.source_name).join(', '))}">also on ${esc([...new Set(dups.map(d => d.source_name))].join(', '))}</span>` : ''}</div>
+        ${t.ref ? `<div class="ref">${esc(t.ref)}</div>` : ''}
+        <div class="why">Matched: ${esc(t.matched.slice(0, 6).join(', '))} · score ${t.score}${t.excluded.length ? ' · minus ' + esc(t.excluded.join(', ')) : ''}</div>
+        <div class="actions">
+          <select class="statussel" aria-label="Team status"><option value="">Status…</option>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}"${st === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
+          <a href="${esc(t.url)}" target="_blank" rel="noopener">${home ? 'Open portal (search the reference there)' : 'Open tender'}</a>
+          ${t.doc_url ? `<a href="${esc(t.doc_url)}" target="_blank" rel="noopener">Documents</a>` : ''}
+          <button class="linkbtn notebtn" type="button">${n.note ? 'Edit note' : 'Add note'}</button>
+          ${n.by ? `<span class="hint">${esc(STATUS[st] || 'Note')} by ${esc(n.by)}</span>` : ''}
+        </div>
+        ${n.note ? `<div class="saved-note">${esc(n.note)}</div>` : ''}
+      </div></article>`;
+  }).join('') + '</div>';
+}
+function table(list){
+  const arr = k => TSORT && TSORT.k === k ? `<span class="arr">${TSORT.dir > 0 ? '▲' : '▼'}</span>` : '';
+  return `<div class="tablewrap"><table class="t"><thead><tr><th class="nosort"><span class="hint">Pick</span></th>${COLS.map(c => `<th data-k="${c.k}">${c.l}${arr(c.k)}</th>`).join('')}</tr></thead><tbody>` +
+    list.map(t => `<tr class="${t.core ? 'is-core' : ''}${SEL.has(t.id) ? ' selected' : ''}" data-id="${esc(t.id)}"><td><input type="checkbox" class="sel" aria-label="Select tender"${SEL.has(t.id) ? ' checked' : ''}></td>${COLS.map(c => c.td(t)).join('')}</tr>`).join('') + '</tbody></table></div>';
+}
+function bindRows(){
+  $('#view').onchange = e => {
+    const row = e.target.closest('[data-id]'); if (!row) return; const id = row.dataset.id;
+    if (e.target.classList.contains('sel')) { e.target.checked ? SEL.add(id) : SEL.delete(id); render(); }
+    if (e.target.classList.contains('statussel')) setNote([id], {status: e.target.value});
+  };
+  $('#view').onclick = e => {
+    const th = e.target.closest('th[data-k]');
+    if (th) { const k = th.dataset.k; TSORT = TSORT && TSORT.k === k ? {k, dir: -TSORT.dir} : {k, dir: 1}; store.set('tsort', TSORT); render(); return; }
+    const nb = e.target.closest('.notebtn'); if (!nb) return;
+    const row = nb.closest('[data-id]'), id = row.dataset.id, body = row.querySelector('.body');
+    if (body.querySelector('.notebox')) return;
+    const old = (NOTES[id] || {}).note || '';
+    body.insertAdjacentHTML('beforeend', `<div class="notebox"><textarea aria-label="Note">${esc(old)}</textarea><button class="btn sm primary" type="button">Save</button></div>`);
+    const box = body.querySelector('.notebox'), ta = box.querySelector('textarea'); ta.focus();
+    box.querySelector('button').onclick = () => setNote([id], {note: ta.value.trim()});
+  };
+}
+
+/* notes */
+function who(){ return store.get('by', ''); }
+async function setNote(ids, patch){
+  if (!who()) { askName(() => setNote(ids, patch)); return; }
+  for (const id of ids) NOTES[id] = Object.assign({}, NOTES[id] || {}, patch, {by: who()});
+  if (LIVE) {
+    try {
+      const r = await fetch('api/note', {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: JSON.stringify(Object.assign({ids, by: who()}, patch))});
+      if (r.status === 403) { toast('Saving needs the team key (ask whoever runs Tender Watch).'); askName(() => setNote(ids, patch), true); return; }
+      if (!r.ok) throw new Error();
+    } catch(e){ toast('Could not save. Is Tender Watch still running?'); return; }
+  } else {
+    const local = store.get('notes', {}); for (const id of ids) local[id] = NOTES[id]; store.set('notes', local);
+  }
+  toast(ids.length > 1 ? `Updated ${ids.length} tenders` : 'Saved'); render();
+}
+function askName(then, key){
+  $('#infoTitle').textContent = key ? 'Team key' : 'Your name';
+  $('#infoBody').innerHTML = `<p>${key ? 'This dashboard is shared on the office network and needs the team key from settings.yaml.' : 'Your name is shown next to statuses and notes you set.'}</p>
+    <input type="text" id="whoName" placeholder="Your name" value="${esc(who())}">${key ? '<input type="text" id="whoKey" placeholder="Team key" style="margin-top:8px">' : ''}
+    <div class="acts"><button class="btn primary" type="button" id="whoSave">Save</button></div>`;
+  $('#infoScrim').hidden = false; $('#whoName').focus();
+  $('#whoSave').onclick = () => { const n = $('#whoName').value.trim(); if (!n) return; store.set('by', n); if (key) store.set('key', $('#whoKey').value.trim()); $('#infoScrim').hidden = true; then(); };
+}
+
+/* export / share */
+function pickList(){ return SEL.size ? current.filter(t => SEL.has(t.id)).concat(FEED.tenders.filter(t => SEL.has(t.id) && !current.includes(t))) : current; }
+function tsv(list){
+  const cell = s => String(s ?? '').replace(/[\t\r\n]+/g, ' ');
+  return [['Closing','Days left','Tender','Buyer','Region','Portal','Reference','Categories','Status','Note','Link']].concat(list.map(t => [t.closing || '', daysLeft(t) ?? '', t.title, t.org, t.region, t.source_name, t.ref, t.categories.join(', '), STATUS[statusOf(t)] || '', (NOTES[t.id] || {}).note || '', t.url])).map(r => r.map(cell).join('\t')).join('\n');
+}
+function openShare(){
+  const list = pickList().slice(0, 150);
+  $('#shareWhat').textContent = `${list.length} tender${list.length === 1 ? '' : 's'}${SEL.size ? ' selected' : ' in the current view'}${pickList().length > 150 ? ' (first 150)' : ''}.`;
+  const team = FEED.team || [];
+  $('#rcpts').innerHTML = team.map((m, i) => `<label><input type="checkbox" data-i="${i}" checked> ${esc(m.name)} <span class="hint">${esc(m.email)}</span></label>`).join('');
+  $('#shareText').value = `Tenders for review (${list.length})\n\n` + list.map((t, i) => `${i + 1}. ${t.title}\n   ${t.org}${t.region ? ' · ' + t.region : ''} · closes ${fmtDate(t.closing)}${t.ref ? ' · ref ' + t.ref : ''}\n   ${t.url}`).join('\n\n');
+  const upd = () => {
+    const to = [...$('#rcpts').querySelectorAll('input:checked')].map(i => team[+i.dataset.i].email).join(',');
+    const body = $('#shareText').value;
+    $('#shareMail').href = 'mailto:' + encodeURIComponent(to).replace(/%2C/g, ',') + '?subject=' + encodeURIComponent(`Tenders for review (${list.length})`) + '&body=' + encodeURIComponent(body.length > 1800 ? body.slice(0, 1800) + '\n…(list shortened; paste the full list from Tender Watch)' : body);
+  };
+  $('#rcpts').onchange = upd; $('#shareText').oninput = upd; upd();
+  $('#shareScrim').hidden = false;
+}
+
+/* runs */
+async function startRun(){
+  try {
+    const r = await fetch('api/run', {method:'POST', headers:{'Content-Type':'application/json', 'X-Team-Key': store.get('key', '')}, body: '{}'});
+    const j = await r.json();
+    toast(j.started ? 'Checking all portals. This takes a few minutes.' : 'A check is already running.');
+    pollRun();
+  } catch(e){ toast('Could not start. Is Tender Watch running?'); }
+}
+async function pollRun(){
+  $('#runBtn').disabled = true; $('#runBtn').textContent = 'Checking portals…';
+  try {
+    const j = await (await fetch('api/run', {cache:'no-store'})).json();
+    if (j.running) { setTimeout(pollRun, 5000); return; }
+  } catch(e){}
+  $('#runBtn').disabled = false; $('#runBtn').textContent = 'Check portals now';
+  const r = await fetch('api/feed', {cache:'no-store'}); if (r.ok) { FEED = await r.json(); LIVE = true; NOTES = FEED.notes || {}; for (const t of FEED.tenders) t._q = (t.title + ' ' + t.org + ' ' + (t.ref || '') + ' ' + t.source_name).toLowerCase(); $('#updated').textContent = 'Updated just now'; renderSources(); render(); toast('Portals checked'); }
+}
+async function showLog(){
+  let log = '';
+  try { log = (await (await fetch('api/run', {cache:'no-store'})).json()).log; } catch(e){}
+  $('#infoTitle').textContent = 'Last run log';
+  $('#infoBody').innerHTML = `<pre class="log">${esc(log || 'No run yet from the dashboard. Scheduled runs log to data/last-run.log.')}</pre>`;
+  $('#infoScrim').hidden = false;
+}
+
+load();
+})();
+</script>

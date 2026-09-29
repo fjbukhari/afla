@@ -1,0 +1,27 @@
+# Copy this file to settings.yaml (same folder) and edit. settings.yaml is never uploaded to GitHub.
+# (setup.bat makes the copy for you.)
+
+# Browser: on Windows Tender Watch uses Microsoft Edge, which is already installed. Other options:
+# "chrome", or "" for Playwright's own Chromium (then run: python -m playwright install chromium).
+# browser_channel: msedge
+
+headless: true             # false = watch the browser work (useful when a portal needs attention)
+page_delay_seconds: 2.5    # pause between pages, to be polite to government servers
+max_pages: 25              # default pages per portal (each portal can override it in sources.yaml)
+dashboard_port: 8765
+keep_closed_days: 60       # closed tenders stay available (filter "Include closed") this long
+
+# People offered in "Share list" on the dashboard
+team:
+  - {name: Your Name, email: you@example.com}
+
+# Only needed if the dashboard is shared on the office network (tw serve --lan):
+# team_key: choose-a-long-random-phrase
+
+# Daily email of new relevant tenders (tw digest; run.bat does this after each check).
+# Save the mailbox password once with:  tw set-login email   (for Gmail, use an "app password")
+# email:
+#   smtp_host: smtp.gmail.com
+#   smtp_port: 587
+#   from: you@example.com
+#   to: [you@example.com, colleague@example.com]
