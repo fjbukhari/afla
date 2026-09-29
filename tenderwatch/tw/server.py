@@ -1,4 +1,4 @@
-"""Local dashboard server: http://localhost:8765 (only this PC unless started with --lan)."""
+"""Local dashboard server: http://localhost:8766 (only this PC unless started with --lan)."""
 import json
 import subprocess
 import sys
@@ -115,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
 
-def serve(port=8765, lan=False, team_key=""):
+def serve(port=8766, lan=False, team_key=""):
     Handler.team_key = team_key
     host = "0.0.0.0" if lan else "127.0.0.1"
     httpd = ThreadingHTTPServer((host, port), Handler)

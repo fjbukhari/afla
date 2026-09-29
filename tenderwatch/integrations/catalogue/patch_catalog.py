@@ -60,7 +60,7 @@ s = s.replace('<div class="rfq-list" id="rfqList" style="display:none;"></div>',
 JS = r"""
 // ---------- Tender Watch link (staff view) ----------
 // Tender Watch (runs on the office PC) publishes open tenders with the item lists it read from
-// their documents: as tender-feed.json next to this page, and live at http://localhost:8765/api/tenders
+// their documents: as tender-feed.json next to this page, and live at http://localhost:8766/api/tenders
 // while its dashboard is running. Each item is matched with the same matchCustomerItem() as uploads.
 const tenderPanel = document.getElementById('tenderPanel');
 const tenderList = document.getElementById('tenderList');
@@ -71,7 +71,7 @@ const tenderSort = document.getElementById('tenderSort');
 const tenderOnlyMatched = document.getElementById('tenderOnlyMatched');
 const tenderExportBtn = document.getElementById('tenderExportBtn');
 // Website: tender-feed.php (staff only, reads the staff tender portal). Office PC: tender-feed.json or the local dashboard.
-const TENDER_FEEDS = ['tender-feed.php', 'tender-feed.json', 'http://localhost:8765/api/tenders'];
+const TENDER_FEEDS = ['tender-feed.php', 'tender-feed.json', 'http://localhost:8766/api/tenders'];
 let TENDERS = null, TENDER_ONLY = null;
 const lineCache = new Map();
 if (PRICES_VISIBLE) tenderPanel.style.display = 'block';

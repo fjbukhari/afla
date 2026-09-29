@@ -161,7 +161,7 @@ def main(argv=None):
         s = sub.add_parser(name, help=h)
         s.add_argument("source")
         s.set_defaults(f=fn)
-    s = sub.add_parser("serve", help="open the dashboard at http://localhost:8765")
+    s = sub.add_parser("serve", help="open the dashboard at http://localhost:8766")
     s.add_argument("--port", type=int)
     s.add_argument("--lan", action="store_true", help="also allow colleagues on the office network")
     s.set_defaults(f=cmd_serve)

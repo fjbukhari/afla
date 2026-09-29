@@ -53,7 +53,7 @@ to get past CAPTCHAs.
 | To… | Do this |
 |---|---|
 | Check all portals now | double-click `run.bat` (or "Check portals now" on the dashboard) |
-| Open the dashboard | double-click `dashboard.bat` (opens http://localhost:8765) |
+| Open the dashboard | double-click `dashboard.bat` (opens http://localhost:8766) |
 | Check automatically twice a day | double-click `schedule.bat` once |
 | Let colleagues on the office network use the dashboard | `dashboard.bat --lan`, and set `team_key` in settings.yaml |
 | Get a daily email of new tenders | fill the `email:` part of settings.yaml, then `tw set-login email` |
@@ -96,7 +96,7 @@ Tender Watch and the catalogue page (`jbs-catalog.html`, **Match Customer List**
    by word, relevance and closing date, and exports a formatted Excel sheet.
 
 The catalogue reads the tender list from `tender-feed.json` in its own folder, or, if that file is not
-there, live from Tender Watch on the same PC (`http://localhost:8765/api/tenders`, while
+there, live from Tender Watch on the same PC (`http://localhost:8766/api/tenders`, while
 `dashboard.bat` is running). To keep a copy next to the website's catalogue files, set
 `catalogue_feed_path` in `settings.yaml`. The feed has open tenders only and no team notes or statuses.
 

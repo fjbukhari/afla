@@ -14,7 +14,7 @@ DEFAULTS = {
     "page_timeout_seconds": 60,
     "max_pages": 25,
     "profile_dir": str(DATA_DIR / "browser-profile"),
-    "dashboard_port": 8765,
+    "dashboard_port": 8766,
     "keep_closed_days": 60,
     "team": [],
     "catalogue_url": "https://www.jb-scientific.com/catalogue/jbs-catalog.html",
