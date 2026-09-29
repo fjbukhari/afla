@@ -28,3 +28,4 @@ afla-inventory-*.txt
 !tests/data/**
 output/
 work/
+__pycache__/

@@ -5,15 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__TITLE__</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--muted:#5d6778;--line:#dde1e8;--accent:#1f6feb;--warn:#b42318;--warnbg:#fdecea;--good:#1a7f37;--mid:#9a6700;--chip:#eef1f5}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171c23;--ink:#e6e9ee;--muted:#9aa4b2;--line:#2a313b;--accent:#4c8dff;--warn:#ff7b72;--warnbg:#3a1714;--good:#3fb950;--mid:#d29922;--chip:#222a35}}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--muted:#5d6778;--line:#dde1e8;--accent:#1f6feb;--warn:#b42318;--warnbg:#fdecea;--good:#1a7f37;--goodbg:#e8f5ec;--mid:#9a6700;--midbg:#fff4d6;--chip:#eef1f5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171c23;--ink:#e6e9ee;--muted:#9aa4b2;--line:#2a313b;--accent:#4c8dff;--warn:#ff7b72;--warnbg:#3a1714;--good:#3fb950;--goodbg:#12301c;--mid:#d29922;--midbg:#33290f;--chip:#222a35}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1400px;margin:0 auto;padding:16px}
+.wrap{max-width:1500px;margin:0 auto;padding:16px}
 .banner{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 12px;font-weight:600;margin-bottom:12px}
-h1{font-size:20px;margin:4px 0 2px} h2{font-size:16px;margin:0 0 10px} .muted{color:var(--muted)}
+h1{font-size:20px;margin:4px 0 2px} h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:12px 0 6px} .muted{color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.bar-top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-top:12px}
+.tabs button{border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;background:var(--chip);padding:7px 14px}
+.tabs button.on{background:var(--card);font-weight:650;color:var(--accent)}
+.tab{display:none}.tab.on{display:block}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .tile{border:1px solid var(--line);border-radius:8px;padding:10px}
 .tile .v{font-size:20px;font-weight:650} .tile .l{color:var(--muted);font-size:12px}
 .tile .h{font-size:11px;color:var(--muted);margin-top:4px}
@@ -33,180 +38,392 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
 th{position:sticky;top:0;background:var(--card);cursor:pointer;user-select:none;font-weight:600}
 tbody tr:hover{background:var(--chip);cursor:pointer}
-.chip{display:inline-block;background:var(--chip);border-radius:10px;padding:0 7px;font-size:12px}
-.chip.p{background:var(--warnbg);color:var(--warn)} .chip.b{color:var(--good)}
-.detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px}
+td.wrap{white-space:normal;min-width:220px}
+.chip{display:inline-block;background:var(--chip);border-radius:10px;padding:0 7px;font-size:12px;margin:1px}
+.chip.p{background:var(--warnbg);color:var(--warn)} .chip.lp{background:var(--warnbg);color:var(--warn);opacity:.85}
+.chip.b{background:var(--goodbg);color:var(--good)} .chip.v{background:var(--midbg);color:var(--mid)}
+.detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:4px 16px}
 .detail div b{color:var(--muted);font-weight:500;display:inline-block;min-width:130px}
-a{color:var(--accent)} .pager{display:flex;gap:8px;align-items:center;margin-top:8px}
+a{color:var(--accent)} .pager{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 details summary{cursor:pointer;color:var(--accent)}
-.help{font-size:12px;color:var(--muted);max-width:900px}
+.help{font-size:12px;color:var(--muted);max-width:1000px}
+.acmg{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px 14px;margin-top:6px}
+.acmg label{display:flex;gap:6px;align-items:flex-start;font-size:13px}
+.acmg .why{font-size:11px;color:var(--muted);display:block}
+.acmg select{padding:0 2px;font-size:12px}
+.cls{font-size:16px;font-weight:650;padding:4px 10px;border-radius:8px;display:inline-block}
+.star{font-size:16px;color:var(--mid)}
+.plot{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+#rep h2{border-bottom:2px solid var(--line);padding-bottom:4px;margin-top:18px}
+#rep [contenteditable]{border:1px dashed var(--line);padding:4px;border-radius:4px;min-height:1.6em}
+.sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}.sig div{border-top:1px solid var(--ink);padding-top:4px}
+@media print{
+  body{background:#fff;color:#000} .noprint,.tabs,.banner-top,#samplePick,.tab:not(#tab-report){display:none!important}
+  #tab-report{display:block!important} .card{border:none;padding:0} #rep [contenteditable]{border:none}
+  .wrap{max-width:none;padding:0}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="banner">Education and research use only. Not for clinical diagnosis or patient management.</div>
+  <div class="banner">Education and research use only. Not for clinical diagnosis or patient management. Automatic evidence suggestions must be checked by a qualified person.</div>
   <h1 id="title"></h1>
   <div class="muted" id="subtitle"></div>
-  <div id="samplePick" class="card" hidden><label>Sample: <select id="sampleSel"></select></label></div>
+  <div class="card noprint bar-top">
+    <label id="samplePick" hidden>Case: <select id="sampleSel"></select></label>
+    <label title="Hides ClinVar, automatic ACMG/AMP suggestions and tiers so students can work the case themselves"><input type="checkbox" id="exercise"> Exercise mode (hide ClinVar and automatic suggestions)</label>
+    <span style="flex:1"></span>
+    <button id="saveSession">Save my work (.json)</button>
+    <label class="muted">Load: <input type="file" id="loadSession" accept=".json"></label>
+  </div>
+  <div class="tabs noprint" id="tabs"></div>
 
-  <div class="card" id="qcCard"><h2>Quality control</h2><div class="tiles" id="tiles"></div>
-    <p class="help">Hints are rough teaching guides for Illumina panels/exomes, not validated laboratory thresholds.</p></div>
-
-  <div class="card" id="covCard"><h2>Coverage of target regions</h2>
-    <div class="bars" id="bars"></div>
-    <details style="margin-top:10px"><summary id="lowSum"></summary><div class="tablebox" style="max-height:300px;margin-top:8px"><table><thead><tr><th>Chrom</th><th>Start</th><th>End</th><th>Mean depth</th></tr></thead><tbody id="lowBody"></tbody></table></div></details>
+  <!-- ============================================================ QUALITY -->
+  <div class="tab" id="tab-quality">
+    <div class="card" id="qcCard"><h2>Quality control <span class="muted" id="qcWho"></span></h2><div class="tiles" id="tiles"></div>
+      <p class="help">Hints are rough teaching guides for Illumina panels/exomes, not validated laboratory thresholds.</p>
+      <div id="members"></div></div>
+    <div class="card" id="somCard" hidden><h2>Tumour-level biomarkers</h2><div class="tiles" id="somTiles"></div><p class="help" id="somHelp"></p></div>
+    <div class="card" id="covCard"><h2>Coverage of target regions</h2>
+      <div class="bars" id="bars"></div>
+      <details style="margin-top:10px"><summary id="lowSum"></summary><div class="tablebox" style="max-height:300px;margin-top:8px"><table><thead><tr><th>Chrom</th><th>Start</th><th>End</th><th>Mean depth</th></tr></thead><tbody id="lowBody"></tbody></table></div></details>
+    </div>
+    <div class="card" id="rohCard" hidden><h2>Runs of homozygosity</h2><div id="rohBody"></div>
+      <p class="help">Long stretches where both copies of the DNA are identical. Their total length rises with parental relatedness;
+      a recessive disease gene often lies inside one. Exome data give approximate boundaries and miss short runs.</p></div>
   </div>
 
-  <div class="card" id="varCard"><h2>Variant explorer</h2>
-    <div class="presets">
-      <button data-preset="rare">Rare, protein-affecting</button>
-      <button data-preset="clinvar">ClinVar pathogenic / likely pathogenic</button>
-      <button data-preset="panel">Rare in my gene list</button>
-      <button data-preset="all">All variants</button>
+  <!-- ============================================================ VARIANTS -->
+  <div class="tab" id="tab-variants">
+    <div class="card" id="varCard"><h2>Variant explorer</h2>
+      <div class="presets" id="presets"></div>
+      <div class="filters">
+        <fieldset><legend>Quality</legend>
+          <label><input type="checkbox" id="fPass" checked> PASS only</label>
+          <label>Min depth <input type="number" id="fDp" value="0" min="0"></label>
+          <label>Min VAF <input type="number" id="fVaf" value="0" min="0" max="1" step="0.05"></label>
+        </fieldset>
+        <fieldset><legend>Population frequency</legend>
+          <label>Max gnomAD / max pop. AF <input type="number" id="fAf" step="0.001" min="0" max="1"></label>
+          <label><input type="checkbox" id="fNoAf" checked> keep variants with no known frequency</label>
+        </fieldset>
+        <fieldset><legend>Predicted impact (VEP)</legend>
+          <label><input type="checkbox" class="imp" value="HIGH" checked> HIGH</label>
+          <label><input type="checkbox" class="imp" value="MODERATE" checked> MODERATE</label>
+          <label><input type="checkbox" class="imp" value="LOW"> LOW</label>
+          <label><input type="checkbox" class="imp" value="MODIFIER"> MODIFIER</label>
+          <label title="SpliceAI ≥ 0.2 kept whatever the impact"><input type="checkbox" id="fSplice" checked> + predicted splice effect</label>
+        </fieldset>
+        <fieldset id="germBox"><legend>Genetics</legend>
+          <label>Inheritance <select id="fInh"><option value="">any</option><option value="de novo">de novo</option><option value="homozygous">homozygous</option><option value="compound">compound heterozygous</option><option value="X-linked">X-linked / hemizygous</option><option value="inherited">inherited (dominant)</option><option value="roh">homozygous inside ROH</option></select></label>
+          <label>ACMG (suggested) <select id="fAcmg"><option value="">any</option><option value="vus+">VUS or worse</option><option value="lp+">likely pathogenic or worse</option></select></label>
+          <label><input type="checkbox" id="fHpo"> phenotype-matched genes only (HPO)</label>
+        </fieldset>
+        <fieldset id="somBox" hidden><legend>Somatic</legend>
+          <label><input type="checkbox" id="fSom"> somatic candidates only</label>
+          <label>Tier <select id="fTier"><option value="">any</option><option value="I">I</option><option value="I-II">I–II</option><option value="I-III">I–III</option></select></label>
+        </fieldset>
+        <fieldset class="clinvar-ui"><legend>ClinVar</legend>
+          <label><input type="checkbox" id="fClin"> pathogenic / likely pathogenic only</label>
+        </fieldset>
+        <fieldset><legend>Genes</legend>
+          <select id="fPanel" style="max-width:260px"><option value="">— gene panel (PanelApp) —</option></select><br>
+          <textarea id="fGenes" placeholder="or type genes: BRCA1, BRCA2, PALB2"></textarea>
+        </fieldset>
+        <fieldset><legend>Search</legend><input id="fText" placeholder="gene, HGVS, rsID…" style="width:200px"></fieldset>
+      </div>
+      <div class="pager"><b id="count"></b><span class="muted">Click a column to sort, a row for details. ☆ adds a variant to the case report.</span>
+        <span style="flex:1"></span><button id="csv">Export filtered rows (CSV)</button></div>
+      <div class="tablebox" style="max-height:620px;margin-top:8px">
+        <table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+      </div>
+      <div class="pager"><button id="prev">‹ Prev</button><span id="page"></span><button id="next">Next ›</button></div>
     </div>
-    <div class="filters">
-      <fieldset><legend>Quality</legend>
-        <label><input type="checkbox" id="fPass" checked> PASS only</label>
-        <label>Min depth <input type="number" id="fDp" value="0" min="0"></label>
-        <label>Min VAF <input type="number" id="fVaf" value="0" min="0" max="1" step="0.05"></label>
-      </fieldset>
-      <fieldset><legend>Population frequency</legend>
-        <label>Max gnomAD / max pop. AF <input type="number" id="fAf" step="0.001" min="0" max="1"></label>
-        <label><input type="checkbox" id="fNoAf" checked> keep variants with no known frequency</label>
-      </fieldset>
-      <fieldset><legend>Predicted impact (VEP)</legend>
-        <label><input type="checkbox" class="imp" value="HIGH" checked> HIGH</label>
-        <label><input type="checkbox" class="imp" value="MODERATE" checked> MODERATE</label>
-        <label><input type="checkbox" class="imp" value="LOW"> LOW</label>
-        <label><input type="checkbox" class="imp" value="MODIFIER"> MODIFIER</label>
-      </fieldset>
-      <fieldset id="somBox" hidden><legend>Somatic</legend>
-        <label><input type="checkbox" id="fSom"> somatic candidates only</label>
-      </fieldset>
-      <fieldset><legend>ClinVar</legend>
-        <label><input type="checkbox" id="fClin"> pathogenic / likely pathogenic only</label>
-      </fieldset>
-      <fieldset><legend>Genes (one per line or comma-separated)</legend>
-        <textarea id="fGenes" placeholder="e.g. BRCA1, BRCA2, PALB2"></textarea>
-      </fieldset>
-      <fieldset><legend>Search</legend><input id="fText" placeholder="gene, HGVS, rsID…" style="width:200px"></fieldset>
-    </div>
-    <div class="pager"><b id="count"></b><span class="muted">Click a column to sort, a row for details.</span>
-      <span style="flex:1"></span><button id="csv">Export filtered rows (CSV)</button></div>
-    <div class="tablebox" style="max-height:620px;margin-top:8px">
-      <table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
-    </div>
-    <div class="pager"><button id="prev">‹ Prev</button><span id="page"></span><button id="next">Next ›</button></div>
     <div class="card" id="detail" hidden></div>
   </div>
 
-  <div class="card"><h2>Methods and versions</h2><div id="methods" class="help"></div></div>
+  <!-- ============================================================ CNV -->
+  <div class="tab" id="tab-cnv"><div class="card"><h2>Copy-number changes (CNVkit)</h2><div id="cnvBody"></div>
+    <p class="help">Log2 ratio of read depth against the reference (0 = normal, about −1 = one copy lost, +0.58 = one copy gained in a pure sample).
+    Reference "pooled" = other samples of the run with the same kit, "user" = your reference, "flat" = no normals (only large, strong changes are believable).
+    Exome/panel CNV calls must be confirmed by another method (e.g. MLPA, array, qPCR).</p></div></div>
+
+  <!-- ============================================================ SV -->
+  <div class="tab" id="tab-sv"><div class="card"><h2>Structural variants and DNA fusions (Manta)</h2><div id="svBody"></div>
+    <p class="help">Capture panels and exomes see only breakpoints that fall inside or near targeted regions. A translocation (BND) between two genes is a
+    candidate fusion; RNA or FISH confirmation is needed. "Pairs/split" are supporting read pairs and split reads.</p></div></div>
+
+  <!-- ============================================================ REPORT -->
+  <div class="tab" id="tab-report"><div class="card">
+    <div class="noprint pager"><button class="primary" onclick="window.print()">Print / save as PDF</button>
+      <span class="muted">Fields with dashed borders can be edited. Your changes are kept in this browser; use "Save my work" to keep a file.</span></div>
+    <div id="rep"></div></div></div>
+
+  <!-- ============================================================ METHODS -->
+  <div class="tab" id="tab-methods"><div class="card"><h2>Methods and versions</h2><div id="methods" class="help"></div></div></div>
 </div>
 
 <script id="afla-data" type="application/json">__AFLA_DATA__</script>
 <script>
 const DATA = JSON.parse(document.getElementById('afla-data').textContent);
 const meta = DATA.meta || {};
+const SOMATIC = meta.mode === 'somatic';
 const $ = id => document.getElementById(id);
 const fmt = (x, d=2) => x == null ? '–' : (typeof x === 'number' ? (Math.abs(x) < 0.001 && x !== 0 ? x.toExponential(1) : x.toFixed(d)) : x);
 const pct = x => x == null ? '–' : x.toFixed(1) + '%';
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let S = null, rows = [], sortKey = 'gene', sortDir = 1, page = 0;
+let S = null, rows = [], sortKey = SOMATIC ? 'tier' : 'priority', sortDir = SOMATIC ? 1 : -1, page = 0, current = null;
 const PAGE = 200;
 const isPLP = v => /(^|[ ,/|])(pathogenic|likely pathogenic)/i.test(v.clinvar || '') && !/conflicting/i.test(v.clinvar || '');
+const exercise = () => $('exercise').checked;
 
-$('title').textContent = meta.title || 'AFLA germline report';
-if (meta.mode === 'somatic') $('somBox').hidden = false;
-$('subtitle').textContent = `Workflow ${meta.workflow_version || ''} · generated ${meta.date || ''} · reference ${meta.reference || ''}`;
-$('fAf').value = meta.report_max_pop_af ?? 0.01;
-$('fVaf').value = meta.report_min_vaf ?? 0;
+// ------------------------------------------------------------------ ACMG criteria (ACMG/AMP 2015 + ClinGen SVI)
+const CRITERIA = [
+  ['PVS1','VeryStrong','Null variant (nonsense, frameshift, canonical ±1/2 splice, start loss) in a gene where loss of function causes disease'],
+  ['PS1','Strong','Same amino-acid change as an established pathogenic variant'],
+  ['PS2','Strong','De novo, maternity and paternity confirmed, phenotype consistent'],
+  ['PS3','Strong','Well-established functional studies show a damaging effect'],
+  ['PS4','Strong','Prevalence in affected individuals significantly higher than in controls'],
+  ['PM1','Moderate','Mutational hotspot or critical functional domain without benign variation'],
+  ['PM2','Supporting','Absent (or extremely rare) in population databases (ClinGen: supporting)'],
+  ['PM3','Moderate','Recessive disorder: detected in trans with a pathogenic variant'],
+  ['PM4','Moderate','Protein length change (in-frame indel outside repeats, stop-loss)'],
+  ['PM5','Moderate','Novel missense at a residue where a different missense change is pathogenic'],
+  ['PM6','Moderate','Assumed de novo (parentage not confirmed)'],
+  ['PP1','Supporting','Co-segregation with disease in multiple affected family members'],
+  ['PP2','Supporting','Missense in a gene with low benign missense variation where missense is a common mechanism'],
+  ['PP3','Supporting','Computational evidence supports a deleterious effect'],
+  ['PP4','Supporting','Phenotype or family history highly specific for a disease with a single genetic cause'],
+  ['BA1','StandAlone','Allele frequency > 5% in a population database'],
+  ['BS1','Strong','Allele frequency greater than expected for the disorder'],
+  ['BS2','Strong','Observed in a healthy adult (homozygous for recessive, heterozygous for dominant fully penetrant disease)'],
+  ['BS3','Strong','Well-established functional studies show no damaging effect'],
+  ['BS4','Strong','Lack of segregation in affected family members'],
+  ['BP1','Supporting','Missense in a gene where only truncating variants cause disease'],
+  ['BP2','Supporting','Observed in trans with a pathogenic variant (dominant) or in cis (any)'],
+  ['BP3','Supporting','In-frame indel in a repetitive region without known function'],
+  ['BP4','Supporting','Computational evidence suggests no impact'],
+  ['BP5','Supporting','Variant found in a case with an alternative molecular cause'],
+  ['BP7','Supporting','Synonymous (or deep intronic) with no predicted splice impact and not highly conserved'],
+];
+const PTS = {VeryStrong: 8, Strong: 4, Moderate: 2, Supporting: 1, StandAlone: 0};
+const STRENGTHS = ['VeryStrong','Strong','Moderate','Supporting'];
+function classify(chosen) {   // chosen: {code: strength}
+  if (chosen.BA1) return {pts: null, cls: 'Benign'};
+  let p = 0;
+  for (const [c, s] of Object.entries(chosen)) p += (c.startsWith('B') ? -1 : 1) * PTS[s];
+  const cls = p >= 10 ? 'Pathogenic' : p >= 6 ? 'Likely pathogenic' : p >= 0 ? 'Uncertain significance' : p >= -6 ? 'Likely benign' : 'Benign';
+  return {pts: p, cls};
+}
+const clsChip = c => `<span class="chip ${/^Pathogenic/.test(c) ? 'p' : /^Likely pathogenic/.test(c) ? 'lp' : /benign/i.test(c) ? 'b' : 'v'}">${esc(c)}</span>`;
 
+// ------------------------------------------------------------------ saved work (per case)
+const STORE_KEY = 'afla:' + (meta.title || '') + ':' + (meta.date || '');
+let WORK = {};
+try { WORK = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) { WORK = {}; }
+function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(WORK)); } catch (e) {} }
+const vkey = v => `${v.chrom}:${v.pos}:${v.ref}:${v.alt}`;
+function caseWork() { const k = S.sample; WORK[k] = WORK[k] || {variants: {}, cnv: {}, sv: {}, fields: {}}; return WORK[k]; }
+function vWork(v) {
+  const w = caseWork(), k = vkey(v);
+  if (!w.variants[k]) {
+    const chosen = {};
+    (v.acmg || []).forEach(c => { if (c.suggested) chosen[c.code] = c.strength; });
+    w.variants[k] = {report: false, chosen, note: '', touched: false};
+  }
+  return w.variants[k];
+}
+function acmgOf(v) {
+  if (SOMATIC || !v.acmg) return null;
+  const w = caseWork().variants[vkey(v)];
+  if (exercise() && !(w && w.touched)) return {pts: null, cls: '—'};
+  const chosen = w ? w.chosen : Object.fromEntries((v.acmg || []).filter(c => c.suggested).map(c => [c.code, c.strength]));
+  return classify(chosen);
+}
+
+// ------------------------------------------------------------------ header, tabs
+$('title').textContent = meta.title || 'AFLA report';
+$('subtitle').textContent = `Workflow ${meta.workflow_version || ''} · generated ${meta.date || ''} · reference ${meta.reference || ''}` + (meta.case_id ? ` · case ${meta.case_id}` : '');
+const TABS = [['quality', 'Quality'], ['variants', 'Variants'], ['cnv', 'Copy number'], ['sv', 'Structural variants'], ['report', 'Case report'], ['methods', 'Methods']];
+$('tabs').innerHTML = TABS.map(([k, l]) => `<button data-tab="${k}">${l}</button>`).join('');
+function showTab(k) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab-' + k));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === k));
+  if (k === 'report') renderReport();
+}
+$('tabs').addEventListener('click', e => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
+
+// ------------------------------------------------------------------ QUALITY
 function tile(label, value, hint, cls) {
   return `<div class="tile"><div class="v ${cls||''}">${value}</div><div class="l">${label}</div>${hint?`<div class="h">${hint}</div>`:''}</div>`;
 }
 function grade(x, good, okv, higher=true) { if (x == null) return ''; return higher ? (x >= good ? 'ok' : x >= okv ? 'mid' : 'bad') : (x <= good ? 'ok' : x <= okv ? 'mid' : 'bad'); }
-
-function renderQC() {
-  const q = S.qc || {}, f = q.fastp, fl = q.flagstat, c = q.coverage, st = S.stats;
+function qcTiles(q, st) {
+  const f = q.fastp, fl = q.flagstat, c = q.coverage, u = q.umi, pr = q.primers;
   let t = '';
   if (f) {
     t += tile('Read pairs (raw)', (f.reads_before/2).toLocaleString(), 'fragments sequenced');
-    t += tile('Q30 bases after trimming', pct(100*f.q30_after), '≥85% is typical for Illumina', grade(100*f.q30_after, 85, 75));
+    t += tile('Q30 bases', pct(100*f.q30_after), '≥85% is typical for Illumina', grade(100*f.q30_after, 85, 75));
     t += tile('Reads kept by fastp', pct(100*f.reads_after/f.reads_before), 'low values: adapters/poor quality', grade(100*f.reads_after/f.reads_before, 90, 80));
     if (f.insert_size_peak) t += tile('Insert size peak', f.insert_size_peak + ' bp', 'DNA fragment length');
+  }
+  if (u) {
+    t += tile('UMI families', u.families.toLocaleString(), `mean ${fmt(u.mean_family_size, 1)} reads per original molecule`);
+    t += tile('Single-read families', pct(u.pct_singletons), 'high: sequencing too shallow for the library (little error correction)', grade(u.pct_singletons, 30, 60, false));
   }
   if (fl) {
     t += tile('Reads mapped', pct(fl.pct_mapped), '≥98% expected for human DNA', grade(fl.pct_mapped, 98, 95));
     if (fl.pct_properly_paired != null) t += tile('Properly paired', pct(fl.pct_properly_paired), 'both ends map as expected', grade(fl.pct_properly_paired, 95, 90));
-    t += tile('Duplicates', meta.mark_duplicates ? pct(fl.pct_duplicates) : 'not marked', meta.mark_duplicates ? 'PCR/optical copies; exomes often 5–20%' : 'amplicon mode', meta.mark_duplicates ? grade(fl.pct_duplicates, 20, 35, false) : '');
+    t += tile('Duplicates', meta.mark_duplicates ? pct(fl.pct_duplicates) : 'not marked', meta.mark_duplicates ? 'PCR/optical copies; exomes often 5–20%' : (meta.umi !== 'none' ? 'UMI consensus used instead' : 'amplicon mode'), meta.mark_duplicates ? grade(fl.pct_duplicates, 20, 35, false) : '');
+  }
+  if (pr && pr.primers) {
+    t += tile('Amplicon uniformity', pct(pr.primer_uniformity_pct), `primers with ≥20% of mean reads; ${pr.primers_zero} of ${pr.primers} primers without reads`, grade(pr.primer_uniformity_pct, 90, 80));
   }
   if (c) {
-    t += tile('Mean target depth', fmt(c.mean_depth, 0) + '×', 'exome: aim ≥100× mean', grade(c.mean_depth, 100, 50));
+    t += tile('Mean target depth', fmt(c.mean_depth, 0) + '×', SOMATIC ? 'somatic panels: often ≥500×' : 'exome: aim ≥100× mean', grade(c.mean_depth, SOMATIC ? 500 : 100, SOMATIC ? 200 : 50));
     if (c.pct_at['20X'] != null) t += tile('Target bases ≥20×', pct(c.pct_at['20X']), 'exome: aim ≥95%', grade(c.pct_at['20X'], 95, 90));
+    if (c.uniformity_pct_02x_mean != null) t += tile('Coverage uniformity', pct(c.uniformity_pct_02x_mean), 'targets ≥20% of mean depth', grade(c.uniformity_pct_02x_mean, 90, 80));
   }
   if (st) {
     t += tile('Variants (PASS / all)', `${st.pass.toLocaleString()} / ${st.total.toLocaleString()}`, `${st.snv} SNVs, ${st.indel} indels`);
-    if (!SOMATIC) t += tile('Ti/Tv (PASS SNVs)', fmt(st.titv), 'coding: ~2.8–3.3; genome ~2.0', st.titv == null ? '' : (st.titv > 2.5 && st.titv < 3.6 ? 'ok' : 'mid'));
+    if (!SOMATIC) t += tile('Ti/Tv (PASS SNVs)', fmt(st.titv), 'coding: ~2.8–3.3; with introns/padding lower (~2.0–2.8)', st.titv == null ? '' : (st.titv > 2.0 && st.titv < 3.6 ? 'ok' : 'mid'));
     if (SOMATIC && st.spectrum) {
       const sp = Object.entries(st.spectrum).sort((a, b) => b[1] - a[1]), n = sp.reduce((x, y) => x + y[1], 0);
       if (n) {
         const [top, cnt] = sp[0], share = 100 * cnt / n;
         t += tile('Main base change (PASS SNVs)', `${top} ${share.toFixed(0)}%`,
-          `${sp.slice(0, 4).map(([k, c]) => k + ' ' + (100 * c / n).toFixed(0) + '%').join(', ')}. C>T usually dominates in blood cancers; a strong excess of another change suggests artefacts`,
+          `${sp.slice(0, 4).map(([k, c]) => k + ' ' + (100 * c / n).toFixed(0) + '%').join(', ')}. C>T usually dominates; a strong excess of another change suggests artefacts`,
           top === 'C>T' || share < 40 ? 'ok' : 'mid');
       }
     }
     if (!SOMATIC) t += tile('Het / hom-alt', fmt(st.het_hom), '~1.5–2 outbred; lower suggests consanguinity');
   }
+  return t;
+}
+function renderQC() {
+  const q = S.qc || {};
+  $('qcWho').textContent = S.main_sample && S.main_sample !== S.sample ? `(${S.main_sample})` : '';
+  const t = qcTiles(q, S.stats);
   $('tiles').innerHTML = t || '<span class="muted">No QC available (workflow started from a VCF).</span>';
-  $('qcCard').hidden = !t;
-
+  const mem = Object.keys(S.qc_by_sample || {});
+  $('members').innerHTML = mem.length > 1 ? `<h3>All sequenced samples in this case</h3><div class="tablebox"><table><thead><tr><th>Sample</th><th>Role</th><th>Mapped</th><th>Duplicates</th><th>Mean depth</th><th>≥20×</th></tr></thead><tbody>${
+    mem.map(m => { const x = S.qc_by_sample[m], fl = x.flagstat || {}, c = x.coverage || {};
+      const role = S.family ? (m === S.family.proband ? 'proband' : m === S.family.mother ? 'mother' : m === S.family.father ? 'father' : '') : '';
+      return `<tr><td>${esc(m)}</td><td>${role}</td><td>${pct(fl.pct_mapped)}</td><td>${pct(fl.pct_duplicates)}</td><td>${fmt(c.mean_depth, 0)}</td><td>${c.pct_at ? pct(c.pct_at['20X']) : '–'}</td></tr>`; }).join('')}</tbody></table></div>` : '';
+  const c = q.coverage;
   $('covCard').hidden = !c;
   if (c) {
     $('bars').innerHTML = Object.entries(c.pct_at).map(([k, v]) => `<span>${k}</span><div class="bar"><i style="width:${v}%"></i></div><span>${v.toFixed(1)}%</span>`).join('');
     $('lowSum').textContent = `${c.n_low_regions} of ${c.n_regions} target regions have mean depth below 20× (lowest ${c.low_regions.length} listed)`;
     $('lowBody').innerHTML = c.low_regions.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
   }
+  // tumour metrics
+  $('somCard').hidden = !SOMATIC;
+  if (SOMATIC) {
+    let t2 = '';
+    if (S.tmb) t2 += tile('Tumour mutational burden', `${fmt(S.tmb.tmb, 1)} /Mb`, `${S.tmb.mutations} coding mutations in ${fmt(S.tmb.mb, 2)} Mb (${esc(S.tmb.denominator)})`, S.tmb.mb < 1 ? 'mid' : '');
+    if (S.msi) t2 += tile('Microsatellite instability', `${fmt(S.msi.score, 1)}%`, `${S.msi.unstable} of ${S.msi.sites} sites unstable: ${esc(S.msi.interpretation)}`, S.msi.score >= 10 ? 'bad' : S.msi.score >= 3 ? 'mid' : 'ok');
+    const byTier = {}; (S.variants || []).filter(v => v.filter === 'PASS').forEach(v => byTier[v.tier] = (byTier[v.tier] || 0) + 1);
+    t2 += tile('PASS variants by tier', ['I','II','III','IV'].map(k => `${k}:${byTier[k] || 0}`).join(' '), 'AMP/ASCO/CAP 2017 suggestions');
+    $('somTiles').innerHTML = t2 || '<span class="muted">No tumour-level metrics.</span>';
+    $('somHelp').textContent = (S.tmb ? S.tmb.note + ' ' : '') + 'MSI cut-offs depend on the assay and must be calibrated locally; the MSIsensor convention (MSK-IMPACT) is shown for teaching.' +
+      (S.oncokb ? ` OncoKB: ${S.oncokb}.` : '');
+  }
+  // ROH
+  const roh = S.roh || {segments: []};
+  $('rohCard').hidden = SOMATIC || !roh.segments.length;
+  if (!SOMATIC && roh.segments.length) {
+    const tot = Object.entries(roh.total_mb || {}).map(([k, v]) => `${esc(k)}: ${v} Mb in runs ≥1.5 Mb`).join('; ');
+    $('rohBody').innerHTML = `<p>${tot || 'no runs ≥ 1.5 Mb'}</p><div class="tablebox" style="max-height:260px"><table><thead><tr><th>Sample</th><th>Chrom</th><th>Start</th><th>End</th><th>Length (Mb)</th><th>Markers</th></tr></thead><tbody>${
+      roh.segments.sort((a, b) => b.length - a.length).slice(0, 200).map(r => `<tr><td>${esc(r.sample)}</td><td>${r.chrom}</td><td>${r.start.toLocaleString()}</td><td>${r.end.toLocaleString()}</td><td>${(r.length/1e6).toFixed(2)}</td><td>${r.markers}</td></tr>`).join('')}</tbody></table></div>`;
+  }
 }
 
-const SOMATIC = meta.mode === 'somatic';
-// Tumour-only calling cannot prove a variant is somatic; this is a teaching hint, not a call.
-function origin(v) {
+// ------------------------------------------------------------------ VARIANTS
+function origin(v) {   // tumour-only calling cannot prove a variant is somatic: a teaching hint
   if (/germline/.test(v.filter || '')) return 'likely germline (Mutect2)';
   if (popaf(v) > 0.001) return 'likely germline (population)';
   if (v.vaf != null && (v.vaf >= 0.9 || (v.vaf >= 0.4 && v.vaf <= 0.6))) return 'possible germline (VAF)';
   return 'somatic candidate';
 }
-const COLS = [
+const popaf = v => [v.max_af, v.gnomade, v.gnomadg, v.gnomad_af, v.gnomad_grpmax].filter(x => x != null).reduce((a, b) => Math.max(a, b), -1);
+const inList = v => genesWanted().has((v.gene || '').toUpperCase());
+function priority(v) {
+  const a = acmgOf(v);
+  return (a && a.pts != null ? a.pts : (a && a.cls === 'Benign' ? -10 : 0)) + 6 * (v.hpo_score || 0) + (inList(v) ? 2 : 0) + (isPLP(v) && !exercise() ? 3 : 0);
+}
+const star = v => { const w = caseWork().variants[vkey(v)]; return `<span class="star" data-star="1" title="add to / remove from the case report">${w && w.report ? '★' : '☆'}</span>`; };
+const GCOLS = [
+  ['star', '☆', v => star(v)],
   ['gene', 'Gene', v => `<b>${esc(v.gene)}</b>`],
   ['loc', 'Variant', v => `${esc(v.chrom)}:${v.pos} ${esc(v.ref.slice(0,12))}&gt;${esc(v.alt.slice(0,12))}`],
   ['hgvsc', 'HGVSc', v => esc(v.hgvsc)], ['hgvsp', 'HGVSp', v => esc(v.hgvsp)],
   ['consequence', 'Consequence', v => esc((v.consequence||'').replace(/_/g,' ').replace(/&/g,', '))],
-  SOMATIC ? ['origin', 'Origin (hint)', v => { const o = origin(v); return `<span class="chip ${o.startsWith('somatic') ? 'p' : ''}">${o}</span>`; }]
-          : ['gt', 'GT', v => esc(v.gt)],
+  ['gt', 'GT', v => esc(v.gt)],
+  ['inheritance', 'Inheritance', v => esc(v.inheritance || '') + (v.in_roh ? ' <span class="chip">ROH</span>' : '')],
   ['vaf', 'VAF', v => fmt(v.vaf)], ['dp', 'DP', v => fmt(v.dp, 0)],
   ['popaf', 'gnomAD / max AF', v => popaf(v) < 0 ? '–' : fmt(popaf(v), 4)],
-  ['clinvar', 'ClinVar', v => clinChip(v)], ['revel', 'REVEL', v => fmt(v.revel)],
-  ['am', 'AlphaMissense', v => esc(v.am_class.replace('likely_','likely '))], ['filter', 'Filter', v => esc(v.filter)],
+  ['clinvar', 'ClinVar', v => clinChip(v), 'clinvar-ui'],
+  ['revel', 'REVEL', v => fmt(v.revel)], ['am', 'AlphaMissense', v => esc((v.am_class || '').replace('likely_','likely '))],
+  ['spliceai', 'SpliceAI', v => fmt(v.spliceai)],
+  ['hpo', 'HPO match', v => v.hpo_score ? fmt(v.hpo_score) : ''],
+  ['acmg', 'ACMG (points)', v => { const a = acmgOf(v); return a ? `${clsChip(a.cls)} ${a.pts == null ? '' : a.pts}` : ''; }],
+  ['priority', 'Priority', v => fmt(priority(v), 1)],
+  ['filter', 'Filter', v => esc(v.filter)],
 ];
-$('head').innerHTML = COLS.map(([k, l]) => `<th data-k="${k}">${l}</th>`).join('');
-const popaf = v => [v.max_af, v.gnomade, v.gnomadg].filter(x => x != null).reduce((a, b) => Math.max(a, b), -1);
+const SCOLS = [
+  ['star', '☆', v => star(v)],
+  ['gene', 'Gene', v => `<b>${esc(v.gene)}</b>`],
+  ['loc', 'Variant', v => `${esc(v.chrom)}:${v.pos} ${esc(v.ref.slice(0,12))}&gt;${esc(v.alt.slice(0,12))}`],
+  ['hgvsp', 'HGVSp', v => esc(v.hgvsp || v.hgvsc)],
+  ['consequence', 'Consequence', v => esc((v.consequence||'').replace(/_/g,' ').replace(/&/g,', '))],
+  ['vaf', 'VAF', v => fmt(v.vaf)], ['dp', 'DP', v => fmt(v.dp, 0)],
+  ['origin', 'Origin (hint)', v => { const o = origin(v); return `<span class="chip ${o.startsWith('somatic') ? 'p' : ''}">${o}</span>`; }],
+  ['tier', 'Tier', v => exercise() ? '—' : `<span class="chip ${v.tier === 'I' ? 'p' : v.tier === 'II' ? 'lp' : v.tier === 'IV' ? 'b' : 'v'}" title="${esc(v.tier_reason)}">${v.tier}</span>`],
+  ['evidence', 'Evidence', v => exercise() ? '—' : `${(v.civic || []).length ? `<span class="chip">CIViC ${(v.civic || []).length}</span>` : ''}${v.oncokb && v.oncokb.level ? `<span class="chip">OncoKB ${esc(v.oncokb.level.replace('LEVEL_', ''))}</span>` : ''}${v.cosmic_count ? `<span class="chip">COSMIC ${v.cosmic_count}</span>` : ''}`],
+  ['popaf', 'gnomAD / max AF', v => popaf(v) < 0 ? '–' : fmt(popaf(v), 4)],
+  ['clinvar', 'ClinVar', v => clinChip(v) + (v.clinvar_onc ? ` <span class="chip">${esc(v.clinvar_onc)}</span>` : ''), 'clinvar-ui'],
+  ['filter', 'Filter', v => esc(v.filter)],
+];
+let COLS = SOMATIC ? SCOLS : GCOLS;
 const keyVal = (v, k) => k === 'loc' ? v.chrom.replace('chr','').padStart(2,'0') + ':' + String(v.pos).padStart(10,'0')
-  : k === 'popaf' ? popaf(v) : k === 'am' ? (v.am_score ?? -1) : k === 'origin' ? origin(v) : (v[k] ?? '');
-
+  : k === 'popaf' ? popaf(v) : k === 'am' ? (v.am_score ?? -1) : k === 'origin' ? origin(v) : k === 'priority' ? priority(v)
+  : k === 'acmg' ? ((acmgOf(v) || {}).pts ?? -99) : k === 'hpo' ? (v.hpo_score || 0) : k === 'tier' ? ({I: 1, II: 2, III: 3, IV: 4}[v.tier] || 5)
+  : k === 'evidence' ? -((v.civic || []).length + (v.cosmic_count || 0)) : k === 'star' ? ((caseWork().variants[vkey(v)] || {}).report ? 0 : 1) : (v[k] ?? '');
+function renderHead() {
+  COLS = (SOMATIC ? SCOLS : GCOLS).filter(c => !(exercise() && c[3] === 'clinvar-ui') && !(c[0] === 'hpo' && !(S.hpo && S.hpo.terms && S.hpo.terms.length)) && !(c[0] === 'inheritance' && !hasFamily() && !(S.variants || []).some(v => v.inheritance)));
+  $('head').innerHTML = COLS.map(([k, l]) => `<th data-k="${k}">${l}</th>`).join('');
+  document.querySelectorAll('.clinvar-ui').forEach(e => e.hidden = exercise());
+}
+const hasFamily = () => S.family && (S.family.mother || S.family.father);
+function genesWanted() {
+  const g = new Set($('fGenes').value.split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean));
+  const p = $('fPanel').value; if (p && S.panels && S.panels[p]) S.panels[p].forEach(x => g.add(String(x).toUpperCase()));
+  return g;
+}
 function applyFilters() {
   const imp = [...document.querySelectorAll('.imp:checked')].map(x => x.value);
-  const maxAf = parseFloat($('fAf').value), keepNoAf = $('fNoAf').checked;
-  const genes = new Set($('fGenes').value.split(/[\s,;]+/).map(g => g.trim().toUpperCase()).filter(Boolean));
+  const maxAf = parseFloat($('fAf').value), keepNoAf = $('fNoAf').checked, splice = $('fSplice').checked;
+  const genes = genesWanted();
   const txt = $('fText').value.trim().toLowerCase(), minDp = +$('fDp').value || 0, minVaf = +$('fVaf').value || 0;
+  const inh = $('fInh').value, acmgF = $('fAcmg').value, tierF = $('fTier').value;
   rows = (S.variants || []).filter(v => {
     if ($('fPass').checked && !(v.filter === 'PASS' || v.filter === '.')) return false;
     if ((v.dp ?? 0) < minDp || (v.vaf ?? 1) < minVaf) return false;
     const af = popaf(v);
     if (af < 0) { if (!keepNoAf) return false; } else if (!isNaN(maxAf) && af > maxAf) return false;
-    if (imp.length && S.annotated && !imp.includes(v.impact)) return false;
+    if (imp.length && S.annotated && !imp.includes(v.impact) && !(splice && (v.spliceai || 0) >= 0.2)) return false;
     if ($('fClin').checked && !isPLP(v)) return false;
     if (SOMATIC && $('fSom').checked && !origin(v).startsWith('somatic')) return false;
+    if (SOMATIC && tierF && !({'I': ['I'], 'I-II': ['I','II'], 'I-III': ['I','II','III']}[tierF]).includes(v.tier)) return false;
+    if (!SOMATIC && inh) {
+      const t = v.inheritance || '';
+      if (inh === 'roh' ? !(v.in_roh && /homozygous/.test(t)) : inh === 'inherited' ? !/inherited from/.test(t) : inh === 'de novo' ? !/(^|, )de novo/.test(t) : !t.includes(inh)) return false;
+    }
+    if (!SOMATIC && acmgF) { const a = acmgOf(v); const c = a ? a.cls : '';
+      if (acmgF === 'vus+' && !/Uncertain|Pathogenic|Likely pathogenic/.test(c)) return false;
+      if (acmgF === 'lp+' && !/athogenic/.test(c)) return false; }
+    if (!SOMATIC && $('fHpo').checked && !v.hpo_score) return false;
     if (genes.size && !genes.has((v.gene || '').toUpperCase())) return false;
     if (txt && !JSON.stringify(v).toLowerCase().includes(txt)) return false;
     return true;
@@ -217,9 +434,9 @@ function sortRows() {
   rows.sort((a, b) => { const x = keyVal(a, sortKey), y = keyVal(b, sortKey); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
 }
 function clinChip(v) {
-  if (!v.clinvar) return '';
-  const c = isPLP(v) ? 'p' : /benign/i.test(v.clinvar) ? 'b' : '';
-  return `<span class="chip ${c}" title="${esc(v.clinvar_status)}">${esc(v.clinvar)}</span>`;
+  if (!v.clinvar || exercise()) return '';
+  const c = isPLP(v) ? 'p' : /benign/i.test(v.clinvar) ? 'b' : 'v';
+  return `<span class="chip ${c}" title="${esc(v.clinvar_status)}">${esc(v.clinvar)}${v.clinvar_stars != null ? ' ' + '★'.repeat(v.clinvar_stars) : ''}</span>`;
 }
 function renderTable() {
   const n = rows.length, pages = Math.max(1, Math.ceil(n / PAGE));
@@ -230,66 +447,277 @@ function renderTable() {
     `<tr data-i="${page * PAGE + i}">${COLS.map(c => `<td>${c[2](v)}</td>`).join('')}</tr>`).join('')
     || `<tr><td colspan="${COLS.length}" class="muted">No variants match these filters.</td></tr>`;
 }
-function detail(v) {
+
+function links(v) {
   const c = v.chrom.replace('chr', ''), gn = `${c}-${v.pos}-${v.ref}-${v.alt}`;
   const rs = (v.existing || '').split('&').find(x => x.startsWith('rs'));
-  const f = [['Gene', v.gene], ['Transcript', v.transcript + (v.mane ? ' (MANE Select)' : '')], ['Exon', v.exon], ['HGVSc', v.hgvsc], ['HGVSp', v.hgvsp],
-    ['Consequence', v.consequence], ['Impact', v.impact], ['Class', v.vclass], ['Genotype', v.gt], ['VAF', fmt(v.vaf)], ['Depth', v.dp], ['GQ', v.gq], ['QUAL', fmt(v.qual,1)],
-    ['Filter', v.filter], ['gnomAD exomes AF', fmt(v.gnomade, 5)], ['gnomAD genomes AF', fmt(v.gnomadg, 5)], ['Max population AF', `${fmt(v.max_af, 5)} ${v.max_af_pops}`],
-    ['ClinVar', v.clinvar], ['ClinVar review', v.clinvar_status], ['ClinVar condition', v.clinvar_disease], ['REVEL', fmt(v.revel)],
-    ['AlphaMissense', `${v.am_class} ${fmt(v.am_score)}`], ['SIFT', v.sift], ['PolyPhen', v.polyphen], ['Known IDs', v.existing]];
-  $('detail').innerHTML = `<h2>${esc(v.gene)} ${esc(v.hgvsc)} ${esc(v.hgvsp)}</h2><div class="detail">${f.map(([k, x]) => `<div><b>${k}</b> ${esc(x ?? '–')}</div>`).join('')}</div>
-    <p>Look up: <a target="_blank" rel="noopener" href="https://gnomad.broadinstitute.org/variant/${gn}?dataset=gnomad_r4">gnomAD</a> ·
-    <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/clinvar/?term=${encodeURIComponent(rs || (v.gene + ' ' + v.hgvsc))}">ClinVar</a> ·
+  const cv = /^\d+$/.test(v.clinvar_id || '') ? `https://www.ncbi.nlm.nih.gov/clinvar/variation/${v.clinvar_id}/` : `https://www.ncbi.nlm.nih.gov/clinvar/?term=${encodeURIComponent(rs || (v.gene + ' ' + v.hgvsc))}`;
+  return `Look up: <a target="_blank" rel="noopener" href="https://gnomad.broadinstitute.org/variant/${gn}?dataset=gnomad_r4">gnomAD</a> ·
+    <a target="_blank" rel="noopener" href="${cv}">ClinVar</a> ·
     <a target="_blank" rel="noopener" href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position=chr${c}:${v.pos - 25}-${v.pos + 25}">UCSC</a>
-    ${v.gene ? `· <a target="_blank" rel="noopener" href="https://search.clinicalgenome.org/kb/genes?search=${encodeURIComponent(v.gene)}">ClinGen</a>` : ''}
-    ${rs ? `· <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/snp/${rs}">dbSNP</a>` : ''}</p>
-    <p class="help">${SOMATIC
-      ? `Origin hint: <b>${origin(v)}</b>. Tumour-only calling cannot separate somatic from germline variants with certainty. Somatic interpretation (e.g. AMP/ASCO/CAP tiers) needs tumour type, variant allele fraction in context of tumour purity, and clinical evidence (e.g. CIViC, OncoKB). ClinVar classifications are mostly germline.`
-      : 'Interpretation (e.g. ACMG/AMP criteria) needs phenotype, inheritance, segregation and literature review.'} These annotations are evidence to weigh, not a classification.</p>`;
-  $('detail').hidden = false; $('detail').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    ${v.gene ? `· <a target="_blank" rel="noopener" href="https://search.clinicalgenome.org/kb/genes?search=${encodeURIComponent(v.gene)}">ClinGen</a>
+      · <a target="_blank" rel="noopener" href="https://www.omim.org/search?search=${encodeURIComponent(v.gene)}">OMIM</a>
+      · <a target="_blank" rel="noopener" href="https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(v.gene + ' ' + (v.hgvsp || v.hgvsc))}">PubMed</a>
+      · <a target="_blank" rel="noopener" href="https://panelapp.genomicsengland.co.uk/panels/entities/${encodeURIComponent(v.gene)}">PanelApp</a>` : ''}
+    ${SOMATIC && v.gene ? `· <a target="_blank" rel="noopener" href="https://civicdb.org/search?q=${encodeURIComponent(v.gene)}">CIViC</a>
+      · <a target="_blank" rel="noopener" href="https://www.oncokb.org/gene/${encodeURIComponent(v.gene)}">OncoKB</a>
+      · <a target="_blank" rel="noopener" href="https://cancer.sanger.ac.uk/cosmic/gene/analysis?ln=${encodeURIComponent(v.gene)}">COSMIC</a>` : ''}
+    ${rs ? `· <a target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/snp/${rs}">dbSNP</a>` : ''}`;
+}
+async function liveLookup(v, box) {
+  box.textContent = 'Checking online…';
+  const out = [];
+  const c = v.chrom.replace('chr', '');
+  try {
+    const q = `{ variant(variantId: "${c}-${v.pos}-${v.ref}-${v.alt}", dataset: gnomad_r4) { exome { af ac an homozygote_count } genome { af ac an homozygote_count } } }`;
+    const r = await fetch('https://gnomad.broadinstitute.org/api', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: q}), signal: AbortSignal.timeout(15000)});
+    const d = await r.json(), x = d.data && d.data.variant;
+    out.push(x ? `gnomAD v4 now: exomes AF ${fmt(x.exome && x.exome.af, 6)} (${x.exome ? x.exome.homozygote_count : 0} hom), genomes AF ${fmt(x.genome && x.genome.af, 6)}` : 'gnomAD v4 now: variant not found (absent)');
+  } catch (e) { out.push('gnomAD: live lookup failed (offline or blocked)'); }
+  if (/^\d+$/.test(v.clinvar_id || '')) {
+    try {
+      const r = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=${v.clinvar_id}&retmode=json`, {signal: AbortSignal.timeout(15000)});
+      const d = await r.json(), x = d.result && d.result[v.clinvar_id];
+      const g = x && (x.germline_classification || x.clinical_significance);
+      out.push(g ? `ClinVar now: ${g.description} (${g.review_status}; last evaluated ${g.last_evaluated || '?'})` : 'ClinVar: no summary returned');
+    } catch (e) { out.push('ClinVar: live lookup failed (offline or blocked)'); }
+  }
+  box.innerHTML = out.map(esc).join('<br>');
+}
+
+function acmgPanel(v) {
+  const w = vWork(v), auto = Object.fromEntries((v.acmg || []).map(c => [c.code, c]));
+  const hideAuto = exercise();
+  const cell = ([code, dflt, desc]) => {
+    const a = auto[code], on = w.chosen[code] != null, st = w.chosen[code] || (a ? a.strength : dflt);
+    const opts = code === 'BA1' ? '' : `<select data-str="${code}">${STRENGTHS.map(s => `<option ${s === st ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+    const why = a && !hideAuto ? `<span class="why">${a.suggested ? 'suggested' : 'consider'}: ${esc(a.reason)}</span>` : '';
+    return `<label><input type="checkbox" data-crit="${code}" ${on ? 'checked' : ''}><span><b>${code}</b> ${opts}<br><span class="muted">${esc(desc)}</span>${why}</span></label>`;
+  };
+  const r = classify(w.chosen);
+  return `<h3>ACMG/AMP evidence ${hideAuto && !w.touched ? '<span class="muted">(exercise mode: tick the criteria you think apply)</span>' : ''}</h3>
+    <div>Classification: <span class="cls">${clsChip(r.cls)}</span> ${r.pts == null ? '(BA1)' : `${r.pts} points`}
+    <span class="help">(Tavtigian et al. 2020: ≥10 pathogenic, 6–9 likely pathogenic, 0–5 VUS, −1 to −6 likely benign, ≤ −7 benign)</span>
+    <button id="acmgReset" class="noprint">Reset to suggestions</button></div>
+    <div class="acmg">${CRITERIA.map(cell).join('')}</div>`;
+}
+function somaticPanel(v) {
+  const civic = (v.civic || []).map(e => `<tr><td>${esc(e.level)}</td><td>${esc(e.type)}</td><td>${esc(e.significance)}</td><td class="wrap">${esc(e.disease)}</td><td class="wrap">${esc(e.therapies)}</td><td>${esc(e.match)}</td><td>${e.url ? `<a target="_blank" rel="noopener" href="${esc(e.url)}">EID${esc(e.id)}</a>` : ''}</td></tr>`).join('');
+  const ok = v.oncokb ? `<p>OncoKB: ${esc(v.oncokb.oncogenic)} · ${esc(v.oncokb.effect)} · level ${esc(v.oncokb.level || '–')} ${v.oncokb.resistance ? '· resistance ' + esc(v.oncokb.resistance) : ''} ${v.oncokb.drugs && v.oncokb.drugs.length ? '· ' + esc(v.oncokb.drugs.join(', ')) : ''}</p>` : '';
+  return `<h3>Somatic interpretation</h3>
+    <p>Suggested AMP/ASCO/CAP tier: <b>${exercise() ? '— (exercise mode)' : v.tier}</b> ${exercise() ? '' : `<span class="help">${esc(v.tier_reason)}</span>`}</p>
+    <p>Origin hint: <b>${origin(v)}</b>. Tumour-only calling cannot separate somatic from germline variants with certainty; consider tumour purity and a germline test.</p>
+    ${exercise() ? '' : ok}
+    ${civic && !exercise() ? `<div class="tablebox"><table><thead><tr><th>Level</th><th>Type</th><th>Significance</th><th>Disease</th><th>Therapies</th><th>Match</th><th>Source</th></tr></thead><tbody>${civic}</tbody></table></div>` : ''}
+    ${v.cosmic_count ? `<p>COSMIC: seen in ${v.cosmic_count} samples ${v.cosmic_tier ? '(Cancer Mutation Census tier ' + esc(v.cosmic_tier) + ')' : ''}</p>` : ''}`;
+}
+function detail(v) {
+  current = v;
+  const w = vWork(v);
+  const f = [['Gene', v.gene + (v.loeuf != null ? ` (LOEUF ${fmt(v.loeuf)}, missense Z ${fmt(v.mis_z)})` : '')], ['Transcript', v.transcript + (v.mane ? ' (MANE Select)' : '')],
+    ['Exon / intron', v.exon || v.intron], ['HGVSc', v.hgvsc], ['HGVSp', v.hgvsp],
+    ['Consequence', (v.consequence || '').replace(/&/g, ', ')], ['Impact', v.impact], ['Class', v.vclass], ['Genotype', v.gt], ['Inheritance', v.inheritance], ['VAF', fmt(v.vaf)], ['Depth', v.dp], ['GQ', v.gq], ['QUAL', fmt(v.qual,1)],
+    ['Filter', v.filter], ['gnomAD exomes AF', fmt(v.gnomade, 5)], ['gnomAD genomes AF', fmt(v.gnomadg, 5)], ['gnomAD (file) AF', fmt(v.gnomad_af, 5)], ['Max population AF', `${fmt(v.max_af, 5)} ${v.max_af_pops}`],
+    ['REVEL', fmt(v.revel)], ['AlphaMissense', `${v.am_class} ${fmt(v.am_score)}`], ['SpliceAI (max Δ)', fmt(v.spliceai)], ['SIFT', v.sift], ['PolyPhen', v.polyphen], ['Known IDs', v.existing]];
+  if (!exercise()) f.push(['ClinVar', `${v.clinvar || '–'} ${v.clinvar_stars != null ? '★'.repeat(v.clinvar_stars) : ''}`], ['ClinVar review', v.clinvar_status], ['ClinVar condition', v.clinvar_disease]);
+  if (v.hpo_score) f.push(['HPO match', `${fmt(v.hpo_score)}: ${((S.hpo.genes[v.gene] || {}).matches || []).map(m => m[1] + ' ~ ' + m[3]).join('; ')}`]);
+  if (v.partners) f.push(['Other variants in gene', v.partners.join(', ')]);
+  const fam = v.samples ? `<h3>Genotypes in the family</h3><div class="tablebox"><table><thead><tr><th>Sample</th><th>Role</th><th>GT</th><th>Depth</th><th>GQ</th><th>VAF</th></tr></thead><tbody>${
+    Object.entries(v.samples).map(([k, g]) => `<tr><td>${esc(k)}</td><td>${k === S.family.proband ? 'proband' : k === S.family.mother ? 'mother' : k === S.family.father ? 'father' : ''}</td><td>${esc(g.gt)}</td><td>${fmt(g.dp, 0)}</td><td>${fmt(g.gq, 0)}</td><td>${fmt(g.vaf)}</td></tr>`).join('')}</tbody></table></div>` : '';
+  $('detail').innerHTML = `<h2>${esc(v.gene)} ${esc(v.hgvsc)} ${esc(v.hgvsp)}</h2>
+    <div class="pager noprint"><button id="dStar" class="primary">${w.report ? '★ In the case report (click to remove)' : '☆ Add to the case report'}</button>
+      <button id="dLive">Check current gnomAD / ClinVar online</button><span id="dLiveOut" class="help"></span></div>
+    <div class="detail">${f.map(([k, x]) => `<div><b>${k}</b> ${esc(x ?? '–')}</div>`).join('')}</div>
+    ${fam}
+    ${SOMATIC ? somaticPanel(v) : acmgPanel(v)}
+    <h3>Interpretation note</h3><textarea id="dNote" style="width:100%;height:70px" placeholder="Your reasoning, literature, segregation, phenotype fit…">${esc(w.note)}</textarea>
+    <p>${links(v)}</p>
+    <p class="help">${SOMATIC ? 'Somatic interpretation needs the tumour type, variant allele fraction in the context of tumour purity, and clinical evidence.'
+      : 'Criteria that need literature, functional data, segregation or phenotype (PS3, PS4, PP1, PP4, BS3, BS4, BP5…) are never ticked automatically.'} Annotations are evidence to weigh, not a classification.</p>`;
+  $('detail').hidden = false;
+  $('dStar').onclick = () => { w.report = !w.report; w.touched = true; persist(); detail(v); renderTable(); };
+  $('dLive').onclick = () => liveLookup(v, $('dLiveOut'));
+  $('dNote').oninput = e => { w.note = e.target.value; persist(); };
+  if (!SOMATIC) {
+    $('detail').querySelectorAll('[data-crit]').forEach(cb => cb.onchange = () => {
+      const code = cb.dataset.crit, sel = $('detail').querySelector(`[data-str="${code}"]`);
+      if (cb.checked) w.chosen[code] = code === 'BA1' ? 'StandAlone' : (sel ? sel.value : 'Supporting'); else delete w.chosen[code];
+      w.touched = true; persist(); detail(v); renderTable();
+    });
+    $('detail').querySelectorAll('[data-str]').forEach(sel => sel.onchange = () => {
+      const code = sel.dataset.str; if (w.chosen[code] != null) { w.chosen[code] = sel.value; w.touched = true; persist(); detail(v); renderTable(); }
+    });
+    $('acmgReset').onclick = () => { delete caseWork().variants[vkey(v)]; vWork(v); persist(); detail(v); renderTable(); };
+  }
+  $('detail').scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 function csv() {
-  const keys = ['chrom','pos','ref','alt','gene','transcript','hgvsc','hgvsp','consequence','impact','gt','vaf','dp','gq','filter','gnomade','gnomadg','max_af','clinvar','clinvar_status','clinvar_disease','revel','am_class','am_score','existing'];
+  const keys = ['chrom','pos','ref','alt','gene','transcript','hgvsc','hgvsp','consequence','impact','gt','inheritance','vaf','dp','gq','filter','gnomade','gnomadg','gnomad_af','max_af','clinvar','clinvar_status','clinvar_disease','revel','am_class','am_score','spliceai','hpo_score','tier','existing'];
   const q = x => `"${String(x ?? '').replace(/"/g, '""')}"`;
-  const text = [keys.join(','), ...rows.map(v => keys.map(k => q(v[k])).join(','))].join('\n');
+  const text = [[...keys, 'acmg_class', 'acmg_points'].join(','), ...rows.map(v => { const a = acmgOf(v) || {}; return [...keys.map(k => q(v[k])), q(a.cls), q(a.pts)].join(','); })].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], {type: 'text/csv'}));
   a.download = `${S.sample}.filtered_variants.csv`; a.click();
 }
-const PRESETS = {
-  rare: () => { setImp(['HIGH','MODERATE']); $('fVaf').value = meta.report_min_vaf ?? 0; $('fAf').value = meta.report_max_pop_af ?? 0.01; $('fClin').checked = false; $('fGenes').value = ''; },
-  clinvar: () => { setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fClin').checked = true; $('fGenes').value = ''; },
-  panel: () => { setImp(['HIGH','MODERATE','LOW']); $('fVaf').value = meta.report_min_vaf ?? 0; $('fAf').value = meta.report_max_pop_af ?? 0.01; $('fClin').checked = false; $('fGenes').focus(); },
-  all: () => { setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fClin').checked = false; $('fGenes').value = ''; $('fPass').checked = false; $('fNoAf').checked = true; },
-};
 function setImp(list) { document.querySelectorAll('.imp').forEach(x => x.checked = list.includes(x.value)); $('fNoAf').checked = true; $('fPass').checked = true; }
+function resetF() { $('fInh').value = ''; $('fAcmg').value = ''; $('fHpo').checked = false; $('fClin').checked = false; $('fSom').checked = false; $('fTier').value = ''; $('fText').value = ''; $('fSplice').checked = true; }
+const PRESETS = SOMATIC ? {
+  'Tier I–II': () => { resetF(); setImp(['HIGH','MODERATE','LOW','MODIFIER']); $('fTier').value = 'I-II'; $('fVaf').value = meta.report_min_vaf ?? 0.02; $('fAf').value = 1; },
+  'Somatic candidates (coding)': () => { resetF(); setImp(['HIGH','MODERATE']); $('fSom').checked = true; $('fVaf').value = meta.report_min_vaf ?? 0.02; $('fAf').value = meta.report_max_pop_af ?? 0.001; },
+  'All variants': () => { resetF(); setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fPass').checked = false; },
+} : {
+  'Prioritised (ACMG + phenotype)': () => { resetF(); setImp(['HIGH','MODERATE','LOW']); $('fVaf').value = meta.report_min_vaf ?? 0.2; $('fAf').value = meta.report_max_pop_af ?? 0.01; $('fAcmg').value = 'vus+'; sortKey = 'priority'; sortDir = -1; },
+  'Rare, protein-affecting': () => { resetF(); setImp(['HIGH','MODERATE']); $('fVaf').value = meta.report_min_vaf ?? 0.2; $('fAf').value = meta.report_max_pop_af ?? 0.01; },
+  'ClinVar pathogenic / likely pathogenic': () => { resetF(); setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fClin').checked = true; },
+  'De novo (trio)': () => { resetF(); setImp(['HIGH','MODERATE','LOW','MODIFIER']); $('fInh').value = 'de novo'; $('fVaf').value = 0; $('fAf').value = 0.01; },
+  'Recessive (homozygous / compound het)': () => { resetF(); setImp(['HIGH','MODERATE']); $('fInh').value = 'homozygous'; $('fVaf').value = 0; $('fAf').value = 0.01; },
+  'All variants': () => { resetF(); setImp([]); $('fVaf').value = 0; $('fAf').value = 1; $('fPass').checked = false; },
+};
+$('presets').innerHTML = Object.keys(PRESETS).map((k, i) => `<button data-preset="${i}">${k}</button>`).join('');
 
-function selectSample(i) { S = DATA.samples[i]; $('detail').hidden = true; renderQC(); $('varCard').hidden = !S.variants; if (S.variants) applyFilters(); }
+// ------------------------------------------------------------------ CNV / SV
+function renderCNV() {
+  const cnv = S.cnv || {}, w = caseWork();
+  const keys = Object.keys(cnv);
+  $('cnvBody').innerHTML = keys.length ? keys.map(smp => {
+    const d = cnv[smp], segs = d.segments.filter(s => Math.abs(s.log2) >= (SOMATIC ? 0.2 : 0.3));
+    return `<h3>${esc(smp)} <span class="muted">(reference: ${esc(d.reference)})</span></h3>
+      ${d.plot ? `<img class="plot" src="${d.plot}" alt="CNV scatter plot of ${esc(smp)}">` : ''}
+      <div class="tablebox" style="margin-top:8px"><table><thead><tr><th>☆</th><th>Chrom</th><th>Start</th><th>End</th><th>Size</th><th>log2</th><th>Copies (call)</th><th>Targets</th><th>Genes</th>${SOMATIC ? '<th>CIViC</th>' : ''}</tr></thead><tbody>${
+      segs.map(s => { const k = `${smp}:${s.chrom}:${s.start}:${s.end}`, on = w.cnv[k];
+        return `<tr><td><span class="star" data-cnv="${esc(k)}">${on ? '★' : '☆'}</span></td><td>${s.chrom}</td><td>${s.start.toLocaleString()}</td><td>${s.end.toLocaleString()}</td><td>${((s.end - s.start)/1e3).toFixed(1)} kb</td><td class="${s.log2 < 0 ? 'bad' : 'mid'}">${s.log2}</td><td>${s.cn ?? '–'}</td><td>${s.probes}</td><td class="wrap">${esc(s.genes.join(', '))}${s.n_genes > s.genes.length ? ' …' : ''}</td>${SOMATIC ? `<td class="wrap">${(s.civic || []).map(e => esc(`${e.variant} (${e.level}, ${e.disease})`)).join('; ')}</td>` : ''}</tr>`; }).join('')
+      || `<tr><td colspan="10" class="muted">No segments beyond the display threshold.</td></tr>`}</tbody></table></div>`;
+  }).join('') : '<p class="muted">No copy-number analysis in this run (needs FASTQ/BAM input and a target BED).</p>';
+  $('cnvBody').querySelectorAll('[data-cnv]').forEach(e => e.onclick = () => { const k = e.dataset.cnv; w.cnv[k] = !w.cnv[k]; if (!w.cnv[k]) delete w.cnv[k]; persist(); renderCNV(); });
+}
+function renderSV() {
+  const sv = (S.sv || []), w = caseWork();
+  $('svBody').innerHTML = sv.length ? `<div class="tablebox"><table><thead><tr><th>☆</th><th>Sample</th><th>Type</th><th>Position</th><th>Partner / end</th><th>Size</th><th>Genes</th><th>Fusion</th><th>Pairs / split (alt)</th><th>Filter</th></tr></thead><tbody>${
+    sv.map(r => { const k = `${r.sample}:${r.id}`;
+      return `<tr><td><span class="star" data-sv="${esc(k)}">${w.sv[k] ? '★' : '☆'}</span></td><td>${esc(r.sample)}</td><td>${esc(r.type)}</td><td>${esc(r.chrom)}:${r.pos}</td><td>${esc(r.partner || (r.end ? r.chrom + ':' + r.end : ''))}</td><td>${r.len ? Math.abs(r.len).toLocaleString() + ' bp' : ''}</td><td class="wrap">${esc(r.genes.join(', '))}</td><td>${r.fusion ? `<span class="chip p">${esc(r.fusion)}</span>` : ''}</td><td>${r.support.alt_pairs ?? ''} / ${r.support.alt_split ?? ''}</td><td>${esc(r.filter)}</td></tr>`; }).join('')}</tbody></table></div>`
+    : '<p class="muted">No structural-variant analysis in this run (tick "Structural variants / fusions" in the form), or none found.</p>';
+  $('svBody').querySelectorAll('[data-sv]').forEach(e => e.onclick = () => { const k = e.dataset.sv; w.sv[k] = !w.sv[k]; if (!w.sv[k]) delete w.sv[k]; persist(); renderSV(); });
+}
+
+// ------------------------------------------------------------------ CASE REPORT
+function field(key, dflt, tag = 'div') {
+  const w = caseWork(); const val = w.fields[key] ?? dflt ?? '';
+  return `<${tag} contenteditable="true" data-field="${key}">${esc(val)}</${tag}>`;
+}
+function renderReport() {
+  const w = caseWork();
+  const sel = (S.variants || []).filter(v => (w.variants[vkey(v)] || {}).report);
+  const q = S.qc || {}, c = q.coverage || {};
+  const hpo = (S.hpo && S.hpo.terms || []).map(t => `${t[1]} (${t[0]})`).join('; ');
+  const cnvSel = Object.keys(w.cnv), svSel = Object.keys(w.sv);
+  const vrow = v => {
+    const a = acmgOf(v) || {}, n = (w.variants[vkey(v)] || {}).note || '';
+    const crit = Object.entries((w.variants[vkey(v)] || {}).chosen || {}).map(([k, s]) => k + (s !== CRITERIA.find(x => x[0] === k)?.[1] ? '_' + s : '')).join(', ');
+    return SOMATIC
+      ? `<tr><td><b>${esc(v.gene)}</b></td><td>${esc(v.hgvsc)}<br>${esc(v.hgvsp)}</td><td>${fmt(v.vaf)} (${fmt(v.dp, 0)} reads)</td><td>Tier ${esc(v.tier)}</td><td class="wrap">${esc(v.tier_reason)}${n ? '<br><i>' + esc(n) + '</i>' : ''}</td></tr>`
+      : `<tr><td><b>${esc(v.gene)}</b><br><span class="muted">${esc(v.transcript)}</span></td><td>${esc(v.hgvsc)}<br>${esc(v.hgvsp)}</td><td>${esc(v.gt)} ${esc(v.inheritance || '')}</td><td>${clsChip(a.cls || '—')}<br><span class="muted">${esc(crit)}</span></td><td class="wrap">${esc(n)}</td></tr>`;
+  };
+  const cnvRows = cnvSel.map(k => { const [smp, ch, st, en] = k.split(':'); const s = ((S.cnv[smp] || {}).segments || []).find(x => x.chrom === ch && x.start == st && x.end == en) || {};
+    return `<tr><td>${esc(smp)}</td><td>${esc(ch)}:${(+st).toLocaleString()}-${(+en).toLocaleString()}</td><td>${s.log2 ?? ''}</td><td>${s.cn ?? ''}</td><td class="wrap">${esc((s.genes || []).join(', '))}</td></tr>`; }).join('');
+  const svRows = svSel.map(k => { const r = (S.sv || []).find(x => `${x.sample}:${x.id}` === k) || {};
+    return `<tr><td>${esc(r.sample)}</td><td>${esc(r.type)}</td><td>${esc(r.chrom)}:${r.pos} ${esc(r.partner || '')}</td><td class="wrap">${esc((r.genes || []).join(', '))} ${r.fusion ? '(' + esc(r.fusion) + ')' : ''}</td></tr>`; }).join('');
+  const lowReg = c.n_low_regions != null ? `${c.n_low_regions} of ${c.n_regions} target regions had mean depth below 20×.` : '';
+  const cnvRef = Object.values(S.cnv || {}).map(d => d.reference)[0];
+  const limits = [
+    'This analysis was performed for education/research with non-validated software. It must not be used for diagnosis or patient management.',
+    'Short-read panel/exome sequencing does not reliably detect repeat expansions, most structural rearrangements, variants in regions of low coverage or high homology (pseudogenes), mosaicism below ~10–20% (germline), or deep intronic and regulatory variants.',
+    lowReg,
+    cnvRef ? `Copy-number calls used a "${cnvRef}" reference and require confirmation by an orthogonal method.` : 'Copy-number variants were not assessed.',
+    SOMATIC ? 'Tumour-only analysis cannot reliably separate somatic from germline variants; tumour purity was not estimated. Tiers are automated suggestions.' : 'ACMG/AMP classifications are student assessments supported by automated suggestions; evidence from literature, segregation and functional studies must be reviewed.',
+    'Databases change: classifications should be re-checked against current ClinVar/gnomAD before any use.',
+  ].filter(Boolean);
+  $('rep').innerHTML = `
+    <div class="banner">EDUCATION / RESEARCH ONLY – NOT A CLINICAL REPORT</div>
+    <h1>${SOMATIC ? 'Somatic sequencing report (teaching)' : 'Genomic analysis report (teaching)'}</h1>
+    <div class="detail">
+      <div><b>Case ID</b> ${field('case', meta.case_id || S.sample, 'span')}</div>
+      <div><b>Sample(s)</b> ${esc((S.vcf_samples && S.vcf_samples.length ? S.vcf_samples : [S.sample]).join(', '))}</div>
+      <div><b>Test</b> ${field('test', (meta.params && meta.params.bed ? 'Targeted sequencing: ' + (meta.targets || '') : 'Sequencing') + (meta.amplicon ? ' (amplicon)' : ''), 'span')}</div>
+      <div><b>Date</b> ${esc(meta.date || '')}</div>
+      ${SOMATIC ? `<div><b>Tumour type</b> ${field('tumour', meta.tumour_type || '', 'span')}</div>` : `<div><b>Sex</b> ${field('sex', S.sex || '', 'span')}</div>`}
+      ${hasFamily() ? `<div><b>Family</b> proband ${esc(S.family.proband)}; mother ${esc(S.family.mother || '–')}; father ${esc(S.family.father || '–')}</div>` : ''}
+    </div>
+    <h2>Clinical information / indication</h2>${field('indication', SOMATIC ? '' : (hpo ? 'Phenotype (HPO): ' + hpo : ''))}
+    <h2>Summary</h2>${field('summary', sel.length ? `${sel.length} variant(s) reported below.` : 'No reportable variant selected.')}
+    ${SOMATIC ? `<h2>Tumour-level biomarkers</h2><p>TMB: ${S.tmb ? `${fmt(S.tmb.tmb, 1)} mutations/Mb (${S.tmb.mutations} in ${fmt(S.tmb.mb, 2)} Mb)` : 'not assessed'}.
+      MSI: ${S.msi ? `${fmt(S.msi.score, 1)}% unstable sites (${S.msi.sites} sites) – ${esc(S.msi.interpretation)}` : 'not assessed'}.</p>` : ''}
+    <h2>${SOMATIC ? 'Variants' : 'Sequence variants'}</h2>
+    ${sel.length ? `<div class="tablebox"><table><thead><tr>${SOMATIC ? '<th>Gene</th><th>Variant</th><th>VAF</th><th>Tier</th><th>Evidence / note</th>' : '<th>Gene</th><th>Variant</th><th>Zygosity / inheritance</th><th>Classification (criteria)</th><th>Interpretation</th>'}</tr></thead><tbody>${sel.map(vrow).join('')}</tbody></table></div>` : '<p class="muted">Select variants with ☆ in the Variants tab.</p>'}
+    ${cnvRows ? `<h2>Copy-number variants</h2><div class="tablebox"><table><thead><tr><th>Sample</th><th>Region</th><th>log2</th><th>Copies</th><th>Genes</th></tr></thead><tbody>${cnvRows}</tbody></table></div>` : ''}
+    ${svRows ? `<h2>Structural variants / fusions</h2><div class="tablebox"><table><thead><tr><th>Sample</th><th>Type</th><th>Breakpoints</th><th>Genes</th></tr></thead><tbody>${svRows}</tbody></table></div>` : ''}
+    <h2>Interpretation and recommendations</h2>${field('interp', '')}
+    <h2>Quality</h2><p>Mean target depth ${fmt(c.mean_depth, 0)}×; ${c.pct_at ? pct(c.pct_at['20X']) : '–'} of target bases ≥20×. ${lowReg}</p>
+    <h2>Methods</h2><p class="help">${esc((meta.steps || []).join(' → '))}. Reference ${esc(meta.reference || '')}. Annotation sources: ${esc((meta.annotation_sources || []).join(', ') || 'Ensembl VEP')}.
+      ${SOMATIC ? 'Tiers: AMP/ASCO/CAP 2017 (automated suggestion, reviewed by the author).' : 'Variant classification: ACMG/AMP 2015 with ClinGen SVI recommendations and the Tavtigian 2020 points system.'}</p>
+    <h2>Limitations</h2><ul>${limits.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+    <div class="sig"><div>Prepared by (student): ${field('by', '', 'span')}</div><div>Reviewed by (supervisor): ${field('rev', '', 'span')}</div></div>`;
+  $('rep').querySelectorAll('[data-field]').forEach(e => e.oninput = () => { caseWork().fields[e.dataset.field] = e.textContent; persist(); });
+}
+
+// ------------------------------------------------------------------ methods
 function methods() {
   const p = meta.params || {}, tools = meta.tools || {};
   $('methods').innerHTML = `<p>Steps run: ${esc((meta.steps || []).join(' → '))}.</p>
-    <p>Tools (containers): ${Object.entries(tools).map(([k, v]) => `${esc(k)} <code>${esc(v)}</code>`).join('; ')}.</p>
-    <p>Annotation: Ensembl VEP cache ${esc(p.vep_cache_version)} (includes gnomAD v4.1 exome/genome frequencies); ${esc((meta.annotation_sources || []).join(', ') || 'no extra sources')}.</p>
-    <p>Quality filter: QUAL ≥ ${esc(p.min_qual)}, depth ≥ ${esc(p.min_dp)}, GQ ≥ ${esc(p.min_gq)}; failing calls are kept and labelled LowQual.
-    Target regions: ${esc(meta.targets || '')}, padded by ${esc(p.bed_padding)} bp.</p>
+    <p>Tools: ${Object.entries(tools).map(([k, v]) => `${esc(k)} <code>${esc(v)}</code>`).join('; ')}.</p>
+    <p>Annotation: ${esc((meta.annotation_sources || []).join(', ') || 'no extra sources')}.</p>
+    <p>Resources used: ${Object.entries(meta.resources || {}).map(([k, v]) => `${esc(k)} = <code>${esc(v)}</code>`).join('; ')}.</p>
+    <p>Target regions: ${esc(meta.targets || '')}, padded by ${esc(p.bed_padding)} bp for calling. Primer clipping: ${meta.primer_clipping ? 'yes' : 'no'}. UMIs: ${esc(meta.umi || 'none')}.</p>
+    <p>Knowledge used for this case: ${Object.entries((S && S.knowledge) || {}).map(([k, v]) => `${k} ${v ? '✓' : '✗'}`).join(', ')}.</p>
+    <p>ACMG suggestions: PVS1 (gnomAD LOEUF &lt; 0.6 or pLI ≥ 0.9), PM2 supporting (absent/≤1e-5), BA1 (&gt;5%), BS1 (&gt;1%), PP3/BP4 (REVEL thresholds of Pejaver et al. 2022; SpliceAI ≥0.2 / ≤0.1),
+       PS1/PM5 (ClinVar pathogenic amino-acid changes), PM4, PP2 (missense Z ≥ 3.09), BP7, PM6/PM3 (family). Points: Tavtigian et al. 2020.</p>
     <details><summary>All parameters</summary><pre>${esc(JSON.stringify(p, null, 2))}</pre></details>`;
 }
 
-document.querySelectorAll('.filters input, .filters textarea').forEach(el => el.addEventListener('input', applyFilters));
-document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { PRESETS[b.dataset.preset](); applyFilters(); }));
-$('head').addEventListener('click', e => { const k = e.target.dataset.k; if (!k) return; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; sortRows(); renderTable(); });
-$('body').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) detail(rows[+tr.dataset.i]); });
+// ------------------------------------------------------------------ session save/load, wiring
+$('saveSession').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({afla_session: 1, title: meta.title, date: meta.date, work: WORK}, null, 1)], {type: 'application/json'}));
+  a.download = `afla-work-${(S && S.sample) || 'case'}.json`; a.click();
+};
+$('loadSession').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => { const d = JSON.parse(t); if (!d.afla_session) { alert('Not an AFLA work file.'); return; } WORK = d.work || {}; persist(); selectSample(DATA.samples.indexOf(S)); });
+};
+$('exercise').onchange = () => { renderHead(); applyFilters(); if (current) detail(current); renderQC(); };
+document.querySelectorAll('.filters input, .filters textarea, .filters select').forEach(el => el.addEventListener('input', applyFilters));
+$('presets').addEventListener('click', e => { const i = e.target.dataset.preset; if (i == null) return; Object.values(PRESETS)[+i](); renderHead(); applyFilters(); });
+$('head').addEventListener('click', e => { const k = e.target.dataset.k; if (!k) return; sortDir = sortKey === k ? -sortDir : (['priority','acmg','hpo','evidence'].includes(k) ? -1 : 1); sortKey = k; sortRows(); renderTable(); });
+$('body').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-i]'); if (!tr) return;
+  const v = rows[+tr.dataset.i];
+  if (e.target.dataset.star) { const w = vWork(v); w.report = !w.report; w.touched = true; persist(); renderTable(); if (current === v) detail(v); return; }
+  detail(v);
+});
 $('prev').onclick = () => { if (page > 0) { page--; renderTable(); } };
 $('next').onclick = () => { if ((page + 1) * PAGE < rows.length) { page++; renderTable(); } };
 $('csv').onclick = csv;
+
+function selectSample(i) {
+  S = DATA.samples[i]; current = null; $('detail').hidden = true;
+  $('germBox').hidden = SOMATIC; $('somBox').hidden = !SOMATIC;
+  const panels = Object.keys(S.panels || {}).sort();
+  $('fPanel').innerHTML = '<option value="">— gene panel (PanelApp) —</option>' + panels.map(p => `<option>${esc(p)}</option>`).join('');
+  $('fPanel').hidden = !panels.length;
+  if (S.gene_list && S.gene_list.length && !$('fGenes').value) $('fGenes').value = S.gene_list.join(', ');
+  renderQC(); renderHead();
+  document.querySelector('#tabs [data-tab="variants"]').hidden = !S.variants;
+  document.querySelector('#tabs [data-tab="cnv"]').hidden = !Object.keys(S.cnv || {}).length;
+  document.querySelector('#tabs [data-tab="sv"]').hidden = !(S.sv || []).length;
+  if (S.variants) { Object.values(PRESETS)[0](); applyFilters(); }
+  renderCNV(); renderSV(); methods();
+  if (document.querySelector('.tab.on') && document.querySelector('.tab.on').id === 'tab-report') renderReport();
+}
 if (DATA.samples.length > 1) {
   $('samplePick').hidden = false;
   $('sampleSel').innerHTML = DATA.samples.map((s, i) => `<option value="${i}">${esc(s.sample)}</option>`).join('');
   $('sampleSel').onchange = e => selectSample(+e.target.value);
 }
-methods();
-if (DATA.samples.length) selectSample(0);
+if (DATA.samples.length) { selectSample(0); showTab(DATA.samples[0].variants ? 'variants' : 'quality'); } else { showTab('methods'); methods(); }
 </script>
 </body>
 </html>

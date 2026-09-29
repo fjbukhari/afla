@@ -3,7 +3,7 @@
     "report": {
       "filepath": "afla-report.html",
       "title": "AFLA germline report",
-      "description": "Interactive report: QC, coverage and filterable annotated variants for all samples.",
+      "description": "Interactive report: QC, coverage, variants with ACMG/AMP evidence suggestions, HPO gene ranking, family inheritance, CNV, SV, ROH and a printable case report.",
       "mime-type": "text/html",
       "optional": true,
       "type": "aggregated"
@@ -35,7 +35,7 @@
     "variants": {
       "filepath": "{{ alias }}/variants/{{ alias }}.vcf.gz",
       "title": "Variants (normalised, quality-labelled)",
-      "description": "Small variants within target regions; failing calls labelled LowQual.",
+      "description": "Small variants within target regions; failing calls labelled LowQual. For families the file is named after the family.",
       "mime-type": "application/gzip",
       "optional": true,
       "type": "per-sample"
@@ -44,6 +44,30 @@
       "filepath": "{{ alias }}/variants/{{ alias }}.annotated.vcf.gz",
       "title": "Annotated variants",
       "description": "Variants with Ensembl VEP annotation (CSQ field).",
+      "mime-type": "application/gzip",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "roh": {
+      "filepath": "{{ alias }}/variants/{{ alias }}.roh.txt",
+      "title": "Runs of homozygosity",
+      "description": "bcftools roh regions (RG lines: sample, chromosome, start, end, length).",
+      "mime-type": "text/tab-separated-values",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "cnv": {
+      "filepath": "{{ alias }}/cnv/{{ alias }}.call.cns",
+      "title": "Copy-number segments (CNVkit)",
+      "description": "Segments with log2 ratio and copy number; plot in {{ alias }}.cnv_scatter.png.",
+      "mime-type": "text/tab-separated-values",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "sv": {
+      "filepath": "{{ alias }}/sv/{{ alias }}.sv.vcf.gz",
+      "title": "Structural variants (Manta)",
+      "description": "Deletions, duplications, inversions, translocations.",
       "mime-type": "application/gzip",
       "optional": true,
       "type": "per-sample"

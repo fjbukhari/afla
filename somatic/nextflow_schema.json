@@ -1,12 +1,31 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$id": "https://raw.githubusercontent.com/fjbukhari/afla/main/somatic/nextflow_schema.json",
+    "$id": "https://raw.githubusercontent.com/fjbukhari/afla/main/nextflow_schema.json",
     "title": "fjbukhari/afla-somatic",
-    "workflow_title": "AFLA somatic (Illumina short reads)",
-    "description": "Somatic small-variant analysis of Illumina panels (e.g. myeloid or solid-tumour panels): read QC, alignment, coverage, GATK Mutect2 (tumour-only, or tumour with a matched normal), Ensembl VEP annotation and an interactive teaching report with a germline/somatic hint. Education and research use only, not for clinical use.",
+    "workflow_title": "AFLA somatic (short reads)",
+    "description": "Somatic analysis of short-read (Illumina/DNBSEQ) tumour panels and exomes: Mutect2 (tumour-only or tumour/normal), UMI consensus, primer clipping, CNV, SV/fusions, MSI, TMB, CIViC/OncoKB evidence and AMP/ASCO/CAP tier suggestions, with an interactive teaching report. Education and research use only, not for clinical use.",
     "url": "https://github.com/fjbukhari/afla",
     "type": "object",
     "definitions": {
+        "analysis": {
+            "title": "Analysis",
+            "type": "object",
+            "fa_icon": "fas fa-microscope",
+            "description": "What kind of analysis to run.",
+            "properties": {
+                "mode": {
+                    "title": "Analysis mode",
+                    "type": "string",
+                    "description": "germline = inherited variants (rare disease, carrier, panels/exomes). somatic = tumour samples (Mutect2, low-frequency variants, TMB, MSI, tiers).",
+                    "default": "somatic",
+                    "enum": [
+                        "germline",
+                        "somatic"
+                    ],
+                    "help_text": "Both modes share the same steps for reads, alignment, coverage and CNV. Germline adds ACMG/AMP evidence, phenotype (HPO) ranking, family analysis and runs of homozygosity; somatic adds Mutect2, MSI, TMB and AMP/ASCO/CAP tier suggestions."
+                }
+            }
+        },
         "input": {
             "title": "Input",
             "type": "object",
@@ -16,74 +35,210 @@
                 "fastq": {
                     "title": "FASTQ folder",
                     "type": "string",
+                    "description": "Folder with paired FASTQ files (*_R1_001 / *_R2_001, or *_1 / *_2; .fastq, .fq, .fastq.gz or .fq.gz). Sub-folders are searched too.",
                     "format": "directory-path",
-                    "description": "Folder with paired Illumina FASTQ files of the tumour sample(s), plus the matched normal if you have one (*_R1_001 / *_R2_001, or *_1 / *_2; .fastq, .fq, .fastq.gz or .fq.gz). Sub-folders are searched too.",
-                    "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. If the same reads exist both compressed and uncompressed, the .gz copy is used once. Files are read where they are; nothing is copied."
+                    "help_text": "Each sample needs an R1 and an R2 file. Several lanes of the same sample (_L001, _L002, ...) are joined automatically. Illumina and DNBSEQ (BGI/MGI) reads both work. Files are read where they are; nothing is copied. Avoid spaces and '+' in folder names."
                 },
                 "bam": {
                     "title": "BAM / CRAM (file or folder)",
                     "type": "string",
-                    "format": "path",
                     "description": "Already-aligned reads (GRCh38). Alignment is skipped.",
-                    "help_text": "The BAM/CRAM must be aligned to the same reference you choose below."
+                    "format": "path",
+                    "help_text": "Must be aligned to the same reference chosen below."
                 },
                 "vcf": {
                     "title": "VCF file",
                     "type": "string",
-                    "format": "file-path",
-                    "description": "Existing variant file (GRCh38, from any pipeline). Only annotation and the report are run."
+                    "description": "Existing variant file (GRCh38, from any pipeline: this workflow, Galaxy, DRAGEN, GATK, EPI2ME wf-human-variation, a sequencing provider...). Only annotation and the report are run.",
+                    "format": "file-path"
                 },
                 "sample_name": {
                     "title": "Sample name (optional)",
                     "type": "string",
                     "description": "Overrides the name taken from the file names. With a FASTQ folder, ALL files are then treated as one sample."
                 },
-                "normal_sample": {
-                    "title": "Matched normal sample name (optional)",
+                "samplesheet": {
+                    "title": "Sample sheet (optional CSV)",
                     "type": "string",
-                    "description": "If the input folder also contains the patient's normal (e.g. blood/saliva) sample, give its sample name here (e.g. PATIENT1-N). Every other sample is then called against it. Leave empty for tumour-only.",
-                    "help_text": "The name is taken from the FASTQ file names without the _S1_L001_R1_001 part. With a matched normal, inherited (germline) variants are removed much more reliably than in tumour-only mode."
+                    "description": "Describes samples: columns sample,role,sex,family,hpo. Roles: proband, mother, father, affected, unaffected (germline); tumour, normal (somatic).",
+                    "format": "file-path",
+                    "help_text": "Germline: samples sharing a 'family' value are genotyped together and inheritance (de novo, compound heterozygous, homozygous, X-linked) is worked out for the proband. Somatic: a tumour and a normal with the same 'family' (patient) value are analysed as a pair. 'hpo' can hold the proband's HPO terms, e.g. HP:0001250; HP:0001263."
+                },
+                "ped": {
+                    "title": "PED file (optional)",
+                    "type": "string",
+                    "description": "Classic pedigree file (family, sample, father, mother, sex, phenotype) as an alternative to the sample sheet.",
+                    "format": "file-path"
                 }
             }
         },
-        "reference": {
-            "title": "Reference and target regions",
+        "resources": {
+            "title": "Reference and resources",
             "type": "object",
             "fa_icon": "fas fa-dna",
+            "description": "Easiest: set 'Resources folder' to the folder made by scripts/afla-setup.sh; every file below is then found automatically. Set individual files only to override.",
             "properties": {
+                "resources_dir": {
+                    "title": "Resources folder",
+                    "type": "string",
+                    "description": "Folder made by scripts/afla-setup.sh (reference, VEP cache, ClinVar, REVEL, AlphaMissense, gnomAD constraint, HPO, PanelApp, CIViC, somatic resources...).",
+                    "format": "directory-path"
+                },
                 "ref": {
                     "title": "Reference genome (FASTA)",
                     "type": "string",
+                    "description": "GRCh38 FASTA, uncompressed (recommended: GRCh38 no-alt analysis set). Not needed when starting from a VCF.",
                     "format": "file-path",
-                    "description": "GRCh38 FASTA, uncompressed (recommended: hg38 / GRCh38 no-alt analysis set). Not needed when starting from a VCF. Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it).",
-                    "help_text": "bwa index files (.amb .ann .bwt .pac .sa) should sit next to it. The .fai and .dict files are made automatically if missing."
+                    "help_text": "bwa index files (.amb .ann .bwt .pac .sa) should sit next to it. The .fai and .dict files are made automatically if missing. If you pick the .fai by mistake, the file next to it is used."
                 },
                 "build_bwa_index": {
                     "title": "Build bwa index if missing",
                     "type": "boolean",
-                    "default": false,
-                    "description": "Builds the aligner index for the reference (about 1 hour and ~5 GB, needed once). It is saved in the output folder under reference/; copy it next to the FASTA to reuse it."
+                    "description": "Builds the aligner index for the reference (about 1 hour and ~5 GB, once). Saved in the output folder under reference/; copy it next to the FASTA to reuse it.",
+                    "default": false
                 },
                 "bed": {
-                    "title": "Target regions (BED, optional)",
+                    "title": "Target regions (BED)",
                     "type": "string",
+                    "description": "Capture kit or panel regions (hg38). Needed for CNV analysis and TMB; if empty, regions covered by the reads are used for calling.",
                     "format": "file-path",
-                    "description": "Capture kit or panel regions (e.g. Twist Exome 2.0, IDT xGen, Agilent SureSelect; hg38). If empty, the regions the reads actually cover are used.",
-                    "help_text": "Chromosome names with or without 'chr' are both accepted. Regions are padded (below) and overlapping regions merged."
+                    "help_text": "Chromosome names with or without 'chr' are both accepted. For amplicon panels give the INSERT (target) regions here."
                 },
                 "bed_padding": {
                     "title": "Padding around targets (bp)",
                     "type": "integer",
+                    "description": "Extra bases added on each side of every target region for variant calling (splice sites).",
                     "default": 100,
-                    "minimum": 0,
-                    "description": "Extra bases added on each side of every target region, to include nearby splice sites."
+                    "minimum": 0
                 },
                 "auto_targets_min_depth": {
                     "title": "Minimum depth for automatic targets",
                     "type": "integer",
+                    "description": "Only without a BED: positions with at least this many reads are treated as targets.",
                     "default": 20,
-                    "minimum": 1,
-                    "description": "Only used without a BED file: positions with at least this many reads are treated as targets."
+                    "minimum": 1
+                }
+            }
+        },
+        "library": {
+            "title": "Library type (amplicon, UMI)",
+            "type": "object",
+            "fa_icon": "fas fa-vial",
+            "description": "Hybrid-capture, tagmentation and ligation libraries need no settings here. Amplicon (PCR) panels and UMI libraries do.",
+            "properties": {
+                "amplicon": {
+                    "title": "Amplicon panel",
+                    "type": "boolean",
+                    "description": "Tick for amplicon (PCR) panels: AmpliSeq, TruSight/TSCA, QIAseq, CleanPlex... Duplicate marking is switched off (amplicon reads start at the same place by design).",
+                    "default": false
+                },
+                "primer_bed": {
+                    "title": "Primer BED (amplicon)",
+                    "type": "string",
+                    "description": "Primer positions, one line per primer (strand in column 6 if known). Primer bases are soft-clipped so they cannot hide or fake variants at amplicon ends.",
+                    "format": "file-path",
+                    "help_text": "Get it from the panel vendor (e.g. AmpliSeq 'primers' BED), or convert an Illumina TruSeq/TSCA manifest with scripts/manifest_to_primers.py."
+                },
+                "amplicon_bed": {
+                    "title": "Amplicon BED (alternative)",
+                    "type": "string",
+                    "description": "Whole amplicons including primers. Together with 'Target regions' (the inserts) the primers are worked out as amplicon minus insert.",
+                    "format": "file-path"
+                },
+                "umi_mode": {
+                    "title": "UMIs (unique molecular identifiers)",
+                    "type": "string",
+                    "description": "none = no UMIs. inline = UMI bases at the start of the reads (give the read structure). read_name = UMI already in the read names (bcl-convert/BCL Convert 'UMI in read header').",
+                    "default": "none",
+                    "enum": [
+                        "none",
+                        "inline",
+                        "read_name"
+                    ],
+                    "help_text": "With UMIs, reads from the same original DNA molecule are merged into one consensus read (fgbio), which removes PCR and sequencing errors: important for low-frequency somatic variants. Duplicate marking is not used."
+                },
+                "umi_read_structure": {
+                    "title": "UMI read structure (inline)",
+                    "type": "string",
+                    "description": "fgbio read structures for R1 and R2, e.g. '12M11S+T +T' (QIAseq: 12-base UMI + 11-base spacer at the start of read 2 is written '+T 12M11S+T'), '8M+T 8M+T' (8-base UMI on both reads). M = UMI, S = skip, T = template.",
+                    "default": "+T +T"
+                },
+                "umi_min_reads": {
+                    "title": "Minimum reads per UMI family",
+                    "type": "integer",
+                    "description": "Consensus reads need at least this many raw reads. Default: germline 1, somatic 2.",
+                    "minimum": 1
+                }
+            }
+        },
+        "somatic": {
+            "title": "Somatic settings",
+            "type": "object",
+            "fa_icon": "fas fa-disease",
+            "description": "Used in somatic mode only.",
+            "properties": {
+                "normal_sample": {
+                    "title": "Matched normal sample name",
+                    "type": "string",
+                    "description": "If the input has the patient's normal (blood) sample, enter its name; every other sample is called against it. With a sample sheet, use role 'normal' instead."
+                },
+                "tumour_type": {
+                    "title": "Tumour type",
+                    "type": "string",
+                    "description": "Free text, e.g. 'acute myeloid leukaemia', 'lung adenocarcinoma'. Evidence in the same tumour type supports tier I; other tumour types tier II."
+                },
+                "min_vaf": {
+                    "title": "Minimum VAF",
+                    "type": "number",
+                    "description": "Calls below this variant allele fraction are labelled LowSupport.",
+                    "default": 0.02,
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "min_alt_reads": {
+                    "title": "Minimum supporting reads",
+                    "type": "integer",
+                    "description": "Calls with fewer variant reads are labelled LowSupport.",
+                    "default": 5,
+                    "minimum": 1
+                },
+                "germline_resource": {
+                    "title": "Germline resource (gnomAD af-only)",
+                    "type": "string",
+                    "description": "GATK af-only-gnomad.hg38.vcf.gz: helps Mutect2 recognise common inherited variants.",
+                    "format": "file-path"
+                },
+                "panel_of_normals": {
+                    "title": "Panel of normals",
+                    "type": "string",
+                    "description": "Mutect2 PoN (GATK 1000g_pon.hg38.vcf.gz, or better one made from your own assay) to remove recurrent artefacts.",
+                    "format": "file-path"
+                },
+                "mutect2_shards": {
+                    "title": "Mutect2 parallel chunks",
+                    "type": "integer",
+                    "description": "Split targets into chunks run in parallel. 1 is best for panels; 4–8 can speed up exomes.",
+                    "default": 1,
+                    "minimum": 1
+                },
+                "tmb_min_vaf": {
+                    "title": "TMB minimum VAF",
+                    "type": "number",
+                    "description": "Coding variants counted for tumour mutational burden must reach this VAF.",
+                    "default": 0.05,
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "cosmic_file": {
+                    "title": "COSMIC file (optional)",
+                    "type": "string",
+                    "description": "COSMIC Cancer Mutation Census TSV or CosmicCodingMuts VCF (free for academic use after registration; not redistributed).",
+                    "format": "file-path"
+                },
+                "oncokb_token": {
+                    "title": "OncoKB API token (optional)",
+                    "type": "string",
+                    "description": "Free academic token from oncokb.org. Needs internet during the run. Leave empty to skip."
                 }
             }
         },
@@ -91,230 +246,374 @@
             "title": "Steps to run",
             "type": "object",
             "fa_icon": "fas fa-list-check",
-            "description": "Tick or untick steps. Steps that do not apply to your input (e.g. trimming when starting from BAM) are skipped automatically.",
+            "description": "Tick or untick steps. Steps that do not apply to your input are skipped automatically.",
             "properties": {
-                "amplicon": {
-                    "title": "Amplicon panel",
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Tick for amplicon (PCR-based) panels, e.g. TruSight Myeloid, AmpliSeq, QIAseq targeted DNA. Duplicate marking is then switched off, because every read of an amplicon starts at the same place by design. In somatic mode, Mutect2's strand_bias and position labels are also not applied, because amplicon reads come from one strand and start at the primers."
-                },
                 "run_fastp": {
-                    "title": "1. Read QC and trimming (fastp)",
+                    "title": "Read QC and trimming (fastp)",
                     "type": "boolean",
-                    "default": true,
-                    "description": "Removes adapters and low-quality ends and writes a read-quality report."
+                    "description": "Removes adapters and low-quality ends, writes a read-quality report.",
+                    "default": true
                 },
                 "mark_duplicates": {
-                    "title": "2. Mark duplicate reads",
+                    "title": "Mark duplicate reads",
                     "type": "boolean",
-                    "default": true,
-                    "description": "Keep ON for exomes and hybrid-capture panels. Ignored (off) when 'Amplicon panel' is ticked."
+                    "description": "Keep ON for exomes and hybrid-capture panels. Ignored for amplicon panels and UMI libraries.",
+                    "default": true
                 },
                 "run_coverage": {
-                    "title": "3. Coverage QC (mosdepth)",
+                    "title": "Coverage QC (mosdepth)",
                     "type": "boolean",
-                    "default": true,
-                    "description": "Mean depth and % of target bases at 10x/20x/30x/50x/100x; lists poorly covered regions."
+                    "description": "Mean depth, % of target bases at 10–500x, poorly covered regions.",
+                    "default": true
                 },
                 "run_calling": {
-                    "title": "4. Somatic variant calling (GATK Mutect2)",
+                    "title": "Small-variant calling",
                     "type": "boolean",
-                    "default": true,
-                    "description": "Mutect2 finds low-frequency variants (down to a few %) and FilterMutectCalls labels artefacts. Turn off to stop after alignment and coverage."
+                    "description": "SNVs and small indels. Turn off to stop after alignment and coverage.",
+                    "default": true
+                },
+                "caller": {
+                    "title": "Germline variant caller",
+                    "type": "string",
+                    "description": "gatk = GATK HaplotypeCaller (CPU). deepvariant = Google DeepVariant (uses the GPU; first use downloads a large container). Somatic mode always uses Mutect2.",
+                    "default": "gatk",
+                    "enum": [
+                        "gatk",
+                        "deepvariant"
+                    ]
+                },
+                "deepvariant_version": {
+                    "title": "DeepVariant version",
+                    "type": "string",
+                    "description": "Container version of google/deepvariant.",
+                    "default": "1.9.0",
+                    "hidden": true
+                },
+                "deepvariant_model": {
+                    "title": "DeepVariant model",
+                    "type": "string",
+                    "description": "WES for exomes and panels, WGS for genomes.",
+                    "default": "WES",
+                    "enum": [
+                        "WES",
+                        "WGS"
+                    ]
+                },
+                "use_gpu": {
+                    "title": "Use the GPU (DeepVariant)",
+                    "type": "boolean",
+                    "description": "Needs an NVIDIA GPU visible to Docker (see scripts/afla-gpu-check.sh).",
+                    "default": true
+                },
+                "run_cnv": {
+                    "title": "Copy-number variants (CNVkit)",
+                    "type": "boolean",
+                    "description": "Gains and losses from read depth. Needs the target BED. Best with 3+ samples of the same kit in one run, or a CNV reference.",
+                    "default": true
+                },
+                "cnv_reference": {
+                    "title": "CNV reference (.cnn, optional)",
+                    "type": "string",
+                    "description": "CNVkit reference built from normal samples of the same kit (scripts/afla-cnv-reference.sh). Much more reliable than a flat reference.",
+                    "format": "file-path"
+                },
+                "run_sv": {
+                    "title": "Structural variants / DNA fusions (Manta)",
+                    "type": "boolean",
+                    "description": "Deletions, duplications, inversions and translocations with breakpoints near targeted regions. Slower; off by default.",
+                    "default": false
+                },
+                "run_roh": {
+                    "title": "Runs of homozygosity (germline)",
+                    "type": "boolean",
+                    "description": "Long homozygous stretches: consanguinity and recessive disease genes.",
+                    "default": true
+                },
+                "run_msi": {
+                    "title": "Microsatellite instability (somatic)",
+                    "type": "boolean",
+                    "description": "msisensor-pro, tumour/normal or tumour-only. The microsatellite list is made from the reference once.",
+                    "default": true
+                },
+                "msi_baseline": {
+                    "title": "MSI tumour-only baseline (optional)",
+                    "type": "string",
+                    "description": "msisensor-pro baseline built from normal samples of the same assay; improves tumour-only MSI.",
+                    "format": "file-path"
                 },
                 "run_annotation": {
-                    "title": "5. Annotate variants (Ensembl VEP)",
+                    "title": "Annotate variants (VEP)",
                     "type": "boolean",
-                    "default": true,
-                    "description": "Adds gene, consequence, HGVS, gnomAD frequency, ClinVar, REVEL and AlphaMissense (sources set below)."
+                    "description": "Genes, consequences, population frequencies and scores. Needs the VEP cache (or resources folder).",
+                    "default": true
                 },
                 "run_report": {
-                    "title": "6. Interactive report",
+                    "title": "Interactive report",
                     "type": "boolean",
-                    "default": true,
-                    "description": "One HTML report with QC, coverage and a filterable variant table (opens in the Report tab)."
+                    "description": "One HTML report for all samples, with a printable case report.",
+                    "default": true
                 }
             }
         },
         "variant_filter": {
-            "title": "Somatic call filter",
+            "title": "Variant quality filters",
             "type": "object",
             "fa_icon": "fas fa-filter",
-            "description": "Calls below these minimums are kept in the VCF but labelled LowSupport (the report hides them by default).",
+            "description": "Calls failing these are kept but labelled (LowQual/LowSupport). Empty = mode default.",
             "properties": {
-                "min_vaf": {
-                    "title": "Minimum variant allele fraction (VAF)",
-                    "type": "number",
-                    "default": 0.02,
-                    "minimum": 0,
-                    "maximum": 1,
-                    "description": "Fraction of reads carrying the variant. 0.02 = 2%. Lower values need very deep, clean data."
-                },
-                "min_alt_reads": {
-                    "title": "Minimum reads supporting the variant",
+                "min_qual": {
+                    "title": "Minimum QUAL (germline)",
                     "type": "integer",
-                    "default": 5,
-                    "minimum": 1
+                    "description": "Variant quality score.",
+                    "default": 30,
+                    "minimum": 0
                 },
                 "min_dp": {
                     "title": "Minimum read depth",
                     "type": "integer",
-                    "default": 50,
+                    "description": "Default: germline 10, somatic 50.",
+                    "minimum": 0
+                },
+                "min_gq": {
+                    "title": "Minimum genotype quality (germline)",
+                    "type": "integer",
+                    "description": "Confidence in the genotype.",
+                    "default": 20,
+                    "minimum": 0
+                },
+                "min_het_vaf": {
+                    "title": "Minimum heterozygous VAF (germline)",
+                    "type": "number",
+                    "description": "Heterozygous calls in fewer reads are labelled LowVAF: usually PCR/homopolymer artefacts (in GIAB exome tests this raised indel precision from ~76% to ~88% without losing true variants). Lower it to look for mosaic variants.",
+                    "default": 0.2,
                     "minimum": 0,
-                    "description": "Total reads at the position."
+                    "maximum": 1
                 }
             }
         },
         "annotation": {
-            "title": "Annotation sources",
+            "title": "Annotation sources (optional overrides)",
             "type": "object",
             "fa_icon": "fas fa-book-medical",
-            "description": "Local files, so annotation works offline. Leave optional sources empty to skip them.",
+            "description": "Normally found in the resources folder. Set here to use other files.",
             "properties": {
                 "vep_cache": {
                     "title": "VEP cache folder",
                     "type": "string",
-                    "format": "directory-path",
-                    "description": "Folder that contains homo_sapiens/<version>_GRCh38 (the offline Ensembl cache; includes gnomAD v4.1 frequencies)."
+                    "description": "Folder that contains homo_sapiens/<version>_GRCh38 (Ensembl VEP offline cache; includes gnomAD v4.1 frequencies).",
+                    "format": "directory-path"
                 },
                 "vep_cache_version": {
                     "title": "VEP cache version",
                     "type": "integer",
-                    "default": 115,
-                    "description": "Must match the cache folder and the VEP container (115)."
+                    "description": "Must match the cache folder.",
+                    "default": 115
+                },
+                "vep_gtf": {
+                    "title": "VEP GTF (instead of cache)",
+                    "type": "string",
+                    "description": "Bgzipped, tabix-indexed GTF gene models for a lean install without the cache (needs the FASTA below; gnomAD then comes from 'gnomAD VCF').",
+                    "format": "file-path"
                 },
                 "vep_fasta": {
-                    "title": "Ensembl FASTA for HGVS names (optional)",
+                    "title": "Ensembl FASTA (for HGVS)",
                     "type": "string",
-                    "format": "file-path",
-                    "description": "Homo_sapiens.GRCh38.dna.primary_assembly.fa (with .fai). Needed for c./p. (HGVS) notation. Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
+                    "description": "Homo_sapiens.GRCh38.dna.primary_assembly.fa with .fai, used for HGVS notation.",
+                    "format": "file-path"
                 },
                 "vep_plugins_dir": {
-                    "title": "VEP plugins folder (optional)",
+                    "title": "VEP plugins folder",
                     "type": "string",
-                    "format": "directory-path",
-                    "description": "Folder with REVEL.pm / AlphaMissense.pm. Default: the Plugins folder inside the VEP cache folder."
+                    "description": "Folder with REVEL.pm, AlphaMissense.pm, SpliceAI.pm (default: Plugins inside the cache).",
+                    "format": "directory-path"
                 },
                 "clinvar_vcf": {
-                    "title": "ClinVar VCF (optional)",
+                    "title": "ClinVar VCF",
                     "type": "string",
-                    "format": "file-path",
-                    "description": "clinvar_GRCh38.vcf.gz with its .tbi index (monthly releases from NCBI). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
+                    "description": "clinvar.vcf.gz (GRCh38) with its .tbi.",
+                    "format": "file-path"
                 },
                 "revel_file": {
-                    "title": "REVEL scores (optional)",
+                    "title": "REVEL scores",
                     "type": "string",
-                    "format": "file-path",
-                    "description": "new_tabbed_revel_grch38.tsv.gz with .tbi. Missense pathogenicity score (0-1). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
+                    "description": "Tabix-indexed REVEL file prepared for the VEP plugin (free for non-commercial use).",
+                    "format": "file-path"
                 },
                 "alphamissense_file": {
-                    "title": "AlphaMissense scores (optional)",
+                    "title": "AlphaMissense scores",
                     "type": "string",
-                    "format": "file-path",
-                    "description": "AlphaMissense_hg38.tsv.gz with .tbi (free for non-commercial use). Choose the data file itself (if you pick its .fai/.tbi index by mistake, the workflow uses the file next to it)."
+                    "description": "AlphaMissense_hg38.tsv.gz prepared for the VEP plugin (tabix-indexed).",
+                    "format": "file-path"
+                },
+                "spliceai_snv": {
+                    "title": "SpliceAI SNV scores",
+                    "type": "string",
+                    "description": "Precomputed SpliceAI SNV VCF (Illumina; free for non-commercial use after registration).",
+                    "format": "file-path"
+                },
+                "spliceai_indel": {
+                    "title": "SpliceAI indel scores",
+                    "type": "string",
+                    "description": "Precomputed SpliceAI indel VCF.",
+                    "format": "file-path"
+                },
+                "gnomad_vcf": {
+                    "title": "gnomAD VCF (optional)",
+                    "type": "string",
+                    "description": "Extra gnomAD sites VCF (AF, AF_grpmax, nhomalt). Not needed with the VEP cache.",
+                    "format": "file-path"
+                },
+                "gnomad_constraint": {
+                    "title": "gnomAD constraint table",
+                    "type": "string",
+                    "description": "gnomad.v4.1.constraint_metrics.tsv: gene loss-of-function intolerance (ACMG PVS1) and missense constraint (PP2).",
+                    "format": "file-path"
+                },
+                "clinvar_protein_index": {
+                    "title": "ClinVar amino-acid index",
+                    "type": "string",
+                    "description": "Made by scripts/afla-setup.sh: ClinVar pathogenic missense changes (ACMG PS1/PM5).",
+                    "format": "file-path"
+                },
+                "hpo_dir": {
+                    "title": "HPO folder",
+                    "type": "string",
+                    "description": "Folder with hp.obo and genes_to_phenotype.txt.",
+                    "format": "directory-path"
+                },
+                "panelapp_dir": {
+                    "title": "PanelApp folder",
+                    "type": "string",
+                    "description": "Gene panels downloaded by scripts/afla-setup.sh (selectable in the report).",
+                    "format": "directory-path"
+                },
+                "civic_dir": {
+                    "title": "CIViC folder",
+                    "type": "string",
+                    "description": "CIViC nightly TSVs (somatic evidence, CC0).",
+                    "format": "directory-path"
+                },
+                "refflat": {
+                    "title": "Gene models (refFlat)",
+                    "type": "string",
+                    "description": "Gene names for CNV regions and coding size for TMB.",
+                    "format": "file-path"
+                },
+                "msi_list": {
+                    "title": "Microsatellite list",
+                    "type": "string",
+                    "description": "msisensor-pro scan of the reference (made automatically if empty).",
+                    "format": "file-path"
                 }
             }
         },
         "output": {
-            "title": "Output and resources",
+            "title": "Output and report",
             "type": "object",
-            "fa_icon": "fas fa-folder-open",
+            "fa_icon": "fas fa-file-export",
+            "description": "",
             "properties": {
                 "output_format": {
-                    "title": "Alignment file format",
+                    "title": "Alignment format",
                     "type": "string",
+                    "description": "cram is ~50% smaller than bam.",
                     "default": "cram",
                     "enum": [
                         "cram",
                         "bam"
-                    ],
-                    "description": "CRAM is about half the size of BAM (needs the reference to open, e.g. in IGV)."
+                    ]
                 },
                 "report_max_pop_af": {
-                    "title": "Report: default maximum population frequency",
+                    "title": "Report: default max population AF",
                     "type": "number",
-                    "default": 0.001,
+                    "description": "Starting filter in the report (changeable there). Default: germline 0.01, somatic 0.001.",
                     "minimum": 0,
-                    "maximum": 1,
-                    "description": "Starting value of the population-frequency filter in the report. Variants more common than this in gnomAD are most likely inherited, not tumour-specific."
+                    "maximum": 1
                 },
                 "report_min_vaf": {
-                    "title": "Report: default minimum VAF",
+                    "title": "Report: default min VAF",
                     "type": "number",
-                    "default": 0.02,
+                    "description": "Starting filter in the report. Default: germline 0.2, somatic 0.02.",
                     "minimum": 0,
-                    "maximum": 1,
-                    "description": "Starting value of the minimum VAF filter in the report (adjustable there)."
+                    "maximum": 1
+                },
+                "report_name": {
+                    "title": "Report file name",
+                    "type": "string",
+                    "description": "Default: afla-report.html (germline) or afla-somatic-report.html."
+                }
+            }
+        },
+        "machine": {
+            "title": "Computer resources",
+            "type": "object",
+            "fa_icon": "fas fa-microchip",
+            "description": "Detected automatically; only change to leave room for other work.",
+            "properties": {
+                "max_cpus": {
+                    "title": "Maximum CPUs",
+                    "type": "integer",
+                    "description": "Default: all CPUs of this computer.",
+                    "minimum": 1
+                },
+                "max_memory": {
+                    "title": "Maximum memory",
+                    "type": "string",
+                    "description": "e.g. '24 GB'. Default: 85% of this computer's memory (inside WSL: what .wslconfig allows)."
                 },
                 "threads": {
-                    "title": "CPU threads",
+                    "title": "Threads for the heaviest steps",
                     "type": "integer",
-                    "default": 12,
-                    "minimum": 1,
-                    "description": "Maximum CPU threads for the heavy steps (alignment, calling, annotation)."
-                },
-                "mutect2_shards": {
-                    "title": "Mutect2 parallel chunks",
-                    "type": "integer",
-                    "default": 1,
-                    "minimum": 1,
-                    "maximum": 24,
-                    "description": "Number of Mutect2 jobs run side by side on chunks of the targets with equal work. 1 = one job using all threads (best on this laptop for panels: 6 chunks gave identical calls but were not faster). Try 4-6 for exomes. Each chunk uses 2 threads and 8 GB."
+                    "description": "Default: maximum CPUs.",
+                    "minimum": 1
                 }
             }
         },
         "misc": {
             "title": "Miscellaneous",
             "type": "object",
+            "fa_icon": "fas fa-cog",
+            "description": "",
             "properties": {
                 "disable_ping": {
+                    "title": "Disable ping",
                     "type": "boolean",
+                    "description": "Not used.",
                     "default": true,
-                    "hidden": true,
-                    "description": "Not used."
+                    "hidden": true
                 },
                 "help": {
+                    "title": "Help",
                     "type": "boolean",
+                    "description": "Not used.",
                     "default": false,
-                    "hidden": true,
-                    "description": "Not used."
+                    "hidden": true
                 },
                 "version": {
+                    "title": "Version",
                     "type": "boolean",
+                    "description": "Not used.",
                     "default": false,
-                    "hidden": true,
-                    "description": "Not used."
-                }
-            }
-        },
-        "somatic_resources": {
-            "title": "Somatic resources (optional)",
-            "type": "object",
-            "fa_icon": "fas fa-database",
-            "description": "Improve tumour-only calling. Both are optional; without them, common population variants are flagged in the report using gnomAD frequencies from VEP.",
-            "properties": {
-                "germline_resource": {
-                    "title": "Germline resource (gnomAD af-only VCF)",
-                    "type": "string",
-                    "format": "file-path",
-                    "description": "e.g. af-only-gnomad.hg38.vcf.gz with .tbi (GATK resource bundle, ~3 GB). Helps Mutect2 recognise inherited variants."
-                },
-                "panel_of_normals": {
-                    "title": "Panel of normals (VCF)",
-                    "type": "string",
-                    "format": "file-path",
-                    "description": "Artefacts seen in normal samples sequenced with the same panel/lab (made with GATK CreateSomaticPanelOfNormals). Must match your assay; the public 1000G PoN suits WGS/WES, not amplicon panels."
+                    "hidden": true
                 }
             }
         }
     },
     "allOf": [
         {
+            "$ref": "#/definitions/analysis"
+        },
+        {
             "$ref": "#/definitions/input"
         },
         {
-            "$ref": "#/definitions/reference"
+            "$ref": "#/definitions/resources"
+        },
+        {
+            "$ref": "#/definitions/library"
+        },
+        {
+            "$ref": "#/definitions/somatic"
         },
         {
             "$ref": "#/definitions/steps"
@@ -323,13 +622,13 @@
             "$ref": "#/definitions/variant_filter"
         },
         {
-            "$ref": "#/definitions/somatic_resources"
-        },
-        {
             "$ref": "#/definitions/annotation"
         },
         {
             "$ref": "#/definitions/output"
+        },
+        {
+            "$ref": "#/definitions/machine"
         },
         {
             "$ref": "#/definitions/misc"
@@ -349,9 +648,9 @@
         },
         "minimum": {
             "cpus": 4,
-            "memory": "16GB"
+            "memory": "12GB"
         },
-        "run_time": "Myeloid-size panel: about 20-30 minutes.",
+        "run_time": "Panel: 10-30 minutes. Exome: about 2-4 hours on a 16-core laptop.",
         "arm_support": false
     }
 }

@@ -1,16 +1,26 @@
-// Per-sample summary (QC + variants as JSON), then one interactive HTML report for all samples.
+// Per case (sample, family or tumour): QC, variants with ACMG/AMP evidence, CNV, SV, MSI, ROH as JSON;
+// then one interactive HTML report for all cases.
 
 process SUMMARISE {
-    tag "${sample}"
+    tag "${unit}"
+    label "medium"
     container "quay.io/biocontainers/python:3.12"
     input:
-    tuple val(sample), path(vcf), path(qc_files)
+    tuple val(unit), path(vcf), path(qc_files, stageAs: "qc/*"), path(extra_files, stageAs: "extra/*")
+    path knowledge, stageAs: "knowledge/*"
+    val knowledge_args
+    path case_json
+    path targets, stageAs: "targets/*"
     output:
-    path "${sample}.summary.json"
+    path "${unit}.summary.json"
     script:
     def v = vcf.name.startsWith("NO_VCF") ? "" : "--vcf ${vcf}"
+    def t = targets instanceof List ? targets[0] : targets
+    def tg = t.name.startsWith("NO_RESOURCE") ? "" : "--targets ${t}"
+    def kargs = knowledge_args.split(' ').collect { a -> a.startsWith('--') || !a ? a : "knowledge/${a}" }.join(' ')
     """
-    afla_report.py summarise --sample ${sample} ${v} --qc ${qc_files} --out ${sample}.summary.json
+    afla_report.py summarise --sample ${unit} ${v} --qc qc/* --extra extra/* --case ${case_json} ${tg} ${kargs} \
+      --out ${unit}.summary.json
     """
 }
 
@@ -20,10 +30,11 @@ process REPORT {
     input:
     path summaries
     path meta
+    val report_name
     output:
-    path "${params.report_name}"
+    path "${report_name}"
     script:
     """
-    afla_report.py html --summaries ${summaries} --meta ${meta} --out ${params.report_name}
+    afla_report.py html --summaries ${summaries} --meta ${meta} --out ${report_name}
     """
 }

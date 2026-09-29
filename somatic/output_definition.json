@@ -3,7 +3,7 @@
     "report": {
       "filepath": "afla-somatic-report.html",
       "title": "AFLA somatic report",
-      "description": "Interactive report: QC, coverage and filterable annotated variants for all samples.",
+      "description": "Interactive report: QC, TMB, MSI, variants with suggested AMP/ASCO/CAP tiers and evidence, CNV, SV/fusions, printable case report.",
       "mime-type": "text/html",
       "optional": true,
       "type": "aggregated"
@@ -19,7 +19,7 @@
     "alignment": {
       "filepath": "{{ alias }}/alignment/{{ alias }}.cram",
       "title": "Aligned reads",
-      "description": "Sorted CRAM (or BAM) with index.",
+      "description": "Sorted CRAM (or BAM) with index (UMI consensus reads and clipped primers when used).",
       "mime-type": "application/octet-stream",
       "optional": true,
       "type": "per-sample"
@@ -32,10 +32,18 @@
       "optional": true,
       "type": "per-sample"
     },
+    "umi-families": {
+      "filepath": "{{ alias }}/qc/{{ alias }}.umi_family_sizes.txt",
+      "title": "UMI family sizes",
+      "description": "fgbio family-size histogram (reads per original molecule).",
+      "mime-type": "text/tab-separated-values",
+      "optional": true,
+      "type": "per-sample"
+    },
     "variants": {
       "filepath": "{{ alias }}/variants/{{ alias }}.vcf.gz",
-      "title": "Variants (normalised, quality-labelled)",
-      "description": "Small variants within target regions; failing calls labelled LowQual.",
+      "title": "Somatic variants (normalised, support-labelled)",
+      "description": "Mutect2 small variants; weak calls labelled LowSupport.",
       "mime-type": "application/gzip",
       "optional": true,
       "type": "per-sample"
@@ -53,6 +61,30 @@
       "title": "Mutect2 calls (before AFLA support filter)",
       "description": "FilterMutectCalls output, tumour and (if given) normal sample.",
       "mime-type": "application/gzip",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "cnv": {
+      "filepath": "{{ alias }}/cnv/{{ alias }}.call.cns",
+      "title": "Copy-number segments (CNVkit)",
+      "description": "Segments with log2 ratio and copy-number call; plot in {{ alias }}.cnv_scatter.png.",
+      "mime-type": "text/tab-separated-values",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "sv": {
+      "filepath": "{{ alias }}/sv/{{ alias }}.sv.vcf.gz",
+      "title": "Structural variants / DNA fusions (Manta)",
+      "description": "Deletions, duplications, inversions, translocations (BND).",
+      "mime-type": "application/gzip",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "msi": {
+      "filepath": "{{ alias }}/msi/{{ alias }}.msi.txt",
+      "title": "Microsatellite instability (msisensor-pro)",
+      "description": "Number of microsatellite sites, unstable sites and MSI score (%).",
+      "mime-type": "text/tab-separated-values",
       "optional": true,
       "type": "per-sample"
     }
