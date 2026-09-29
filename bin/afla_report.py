@@ -48,6 +48,11 @@ def num(x):
         return None
 
 
+def unescape(x):
+    """VCF-escaped characters only (HGVS keeps its underscores: c.105_110del)."""
+    return (x or "").replace("%3D", "=").replace("%2C", ",").replace("%3B", ";")
+
+
 def clean(x):
     return (x or "").replace("_", " ").replace("%3D", "=").replace("%2C", ",")
 
@@ -211,7 +216,7 @@ def parse_vcf(path, roles):
                 "gene": csq.get("SYMBOL", ""), "transcript": csq.get("Feature", ""), "mane": csq.get("MANE_SELECT", ""),
                 "consequence": csq.get("Consequence", ""), "impact": csq.get("IMPACT", ""), "exon": csq.get("EXON", ""),
                 "intron": csq.get("INTRON", ""), "biotype": csq.get("BIOTYPE", ""),
-                "hgvsc": clean(csq.get("HGVSc", "")).split(":")[-1], "hgvsp": clean(csq.get("HGVSp", "")).split(":")[-1],
+                "hgvsc": unescape(csq.get("HGVSc", "")).split(":")[-1], "hgvsp": unescape(csq.get("HGVSp", "")).split(":")[-1],
                 "gnomade": num(csq.get("gnomADe_AF")), "gnomadg": num(csq.get("gnomADg_AF")),
                 "gnomad_af": num(csq.get("gnomAD_AF")), "gnomad_grpmax": num(csq.get("gnomAD_AF_grpmax")),
                 "gnomad_nhomalt": num(csq.get("gnomAD_nhomalt")),

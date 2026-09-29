@@ -717,7 +717,9 @@ if (DATA.samples.length > 1) {
   $('sampleSel').innerHTML = DATA.samples.map((s, i) => `<option value="${i}">${esc(s.sample)}</option>`).join('');
   $('sampleSel').onchange = e => selectSample(+e.target.value);
 }
-if (DATA.samples.length) { selectSample(0); showTab(DATA.samples[0].variants ? 'variants' : 'quality'); } else { showTab('methods'); methods(); }
+// open the first case that has variants (e.g. the tumour rather than its normal)
+const FIRST = Math.max(0, DATA.samples.findIndex(s => s.variants));
+if (DATA.samples.length) { $('sampleSel').value = String(FIRST); selectSample(FIRST); showTab(DATA.samples[FIRST].variants ? 'variants' : 'quality'); } else { showTab('methods'); methods(); }
 </script>
 </body>
 </html>
