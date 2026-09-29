@@ -29,9 +29,15 @@ def run(only=None, headless=None, log=print):
             line = f"  -> {status}: {len(recs)} rows, {rel} relevant, {new} new" + (f" | {err}" if err else "")
             log(line)
             summary.append((src["id"], status, len(recs), rel, new, err))
+        mark_duplicates(con)
+        if st.get("read_documents", True):
+            from .items import fetch_items
+            try:
+                fetch_items(br, con, log)
+            except Exception as e:
+                log(f"Reading tender documents failed: {e}")
     finally:
         br.close()
-    mark_duplicates(con)
     write_feed(con)
     return summary
 
@@ -61,6 +67,10 @@ def build_feed(con, include_irrelevant=False):
         t["city"] = city_of(t.get("location"), t.get("org"), t.get("title"))
         t["institute"] = institute_of(t.get("org"))
         tenders.append(t)
+    from .items import items_for
+    items = items_for(con)
+    for t in tenders:
+        t["items"] = items.get(t["id"], [])
     notes = {r["id"]: dict(r) for r in con.execute("SELECT * FROM notes")}
     sources = []
     for s in load_sources(include_disabled=True):
@@ -79,9 +89,33 @@ def build_feed(con, include_irrelevant=False):
         "generated": db.now(), "threshold": scorer.threshold,
         "categories": {k: bool(v.get("core")) for k, v in scorer.R["categories"].items()},
         "team": st.get("team", []), "sources": sources, "tenders": tenders, "notes": notes,
+        "catalogue_url": st.get("catalogue_url", ""),
     }
+
+
+PUBLIC_FIELDS = ("id", "title", "institute", "city", "region", "source_name", "ref", "closing", "published",
+                 "url", "doc_url", "categories", "core", "score", "items")
+
+
+def build_public_feed(con):
+    """Open relevant tenders for the catalogue's Match tab: no team notes or statuses."""
+    feed = build_feed(con)
+    today = date.today().isoformat()
+    tenders = [{k: t.get(k) for k in PUBLIC_FIELDS} for t in feed["tenders"]
+               if t["relevant"] and not t["dup_of"] and (not t["closing"] or t["closing"] >= today)]
+    return {"generated": feed["generated"], "source": "JBS Tender Watch", "tenders": tenders}
 
 
 def write_feed(con):
     DATA_DIR.mkdir(exist_ok=True)
     (DATA_DIR / "feed.json").write_text(json.dumps(build_feed(con), ensure_ascii=False), encoding="utf-8")
+    pub = json.dumps(build_public_feed(con), ensure_ascii=False)
+    (DATA_DIR / "tender-feed.json").write_text(pub, encoding="utf-8")
+    # Optional copy next to the website's catalogue page (e.g. a synced website folder)
+    dest = load_settings().get("catalogue_feed_path")
+    if dest:
+        from pathlib import Path
+        try:
+            Path(dest).write_text(pub, encoding="utf-8")
+        except OSError as e:
+            print(f"Could not write tender feed to {dest}: {e}")

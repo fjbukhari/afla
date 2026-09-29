@@ -148,6 +148,9 @@ input[type=checkbox]{accent-color:var(--seal);width:15px;height:15px;margin:0;cu
 .notebox{display:flex;gap:6px;align-items:flex-start}
 .notebox textarea{flex:1;min-width:0;min-height:52px;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:6px 8px;font-size:13px;resize:vertical}
 .saved-note{font-size:12.5px;color:var(--ink-2);background:var(--sunk);border-radius:4px;padding:5px 8px;white-space:pre-wrap}
+.items{font-size:12.5px;color:var(--ink-2)}
+.items summary{cursor:pointer;color:var(--seal);width:max-content;max-width:100%}
+.items ol{margin:6px 0 0;padding-left:22px;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 .empty{padding:40px 20px;text-align:center;color:var(--ink-3)}
 .more{margin:12px auto 0;display:block}
 @media (max-width:560px){
@@ -217,7 +220,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px
       <div class="fgroup">
         <label class="lab" for="q">Search</label>
         <input type="search" id="q" placeholder="e.g. PCR, reagents, NIH, Karachi">
-        <div class="hint">All words must appear in the title, institute, city or reference.</div>
+        <div class="hint">All words must appear in the title, institute, city, reference or item list.</div>
       </div>
       <div class="fgroup"><span class="lab" id="msInstL">Institute / buyer</span><div class="ms" id="msInst"></div></div>
       <div class="fgroup"><span class="lab" id="msCityL">City</span><div class="ms" id="msCity"></div></div>
@@ -373,7 +376,8 @@ async function load(){
   init(); render();
 }
 
-function prep(t){ t.city = t.city || ''; t.institute = t.institute || t.org || ''; t._q = [t.title, t.org, t.ref, t.source_name, t.city, t.location].join(' ').toLowerCase(); }
+function prep(t){ t.city = t.city || ''; t.institute = t.institute || t.org || ''; t.items = t.items || []; t._q = [t.title, t.org, t.ref, t.source_name, t.city, t.location, t.items.join(' ')].join(' ').toLowerCase(); }
+function catLink(t){ if (!FEED.catalogue_url) return ''; const u = new URL(FEED.catalogue_url); u.searchParams.set('staff', '1'); u.searchParams.set('tab', 'match'); u.searchParams.set('tender', t.id); u.searchParams.set('q', (t.items.length ? t.items : [t.title]).slice(0, 60).join('\n').slice(0, 6000)); return u.toString(); }
 const CITY_NONE = 'City not stated';
 function cityOf(t){ return t.city || CITY_NONE; }
 function daysLeft(t){ if (!t.closing) return null; return Math.round((new Date(t.closing + 'T00:00:00') - today) / 864e5); }
@@ -610,9 +614,11 @@ function cards(list){
           <select class="statussel" aria-label="Team status"><option value="">Status…</option>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}"${st === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
           <a href="${esc(t.url)}" target="_blank" rel="noopener">${home ? 'Open portal (search the reference there)' : 'Open tender'}</a>
           ${t.doc_url ? `<a href="${esc(t.doc_url)}" target="_blank" rel="noopener">Documents</a>` : ''}
+          ${FEED.catalogue_url ? `<a href="${esc(catLink(t))}" target="_blank" rel="noopener">Match to catalogue${t.items.length ? ' (' + t.items.length + ' items)' : ''}</a>` : ''}
           <button class="linkbtn notebtn" type="button">${n.note ? 'Edit note' : 'Add note'}</button>
           ${n.by ? `<span class="hint">${esc(STATUS[st] || 'Note')} by ${esc(n.by)}</span>` : ''}
         </div>
+        ${t.items.length ? `<details class="items"><summary>${t.items.length} item${t.items.length === 1 ? '' : 's'} read from the tender document</summary><ol>${t.items.slice(0, 200).map(i => `<li>${esc(i)}</li>`).join('')}</ol></details>` : ''}
         ${n.note ? `<div class="saved-note">${esc(n.note)}</div>` : ''}
       </div></article>`;
   }).join('') + '</div>';

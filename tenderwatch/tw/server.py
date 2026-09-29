@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import DATA_DIR, ROOT, db
-from .runner import build_feed
+from .runner import build_feed, build_public_feed
 
 WEB = Path(__file__).parent / "web" / "index.html"
 LOG = DATA_DIR / "last-run.log"
@@ -42,9 +42,25 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def _send(self, code, body, ctype="application/json"):
+    def _cors(self):
+        # Lets the JB Scientific catalogue page (another website) read /api/tenders from this PC
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        if self.path.split("?")[0] == "/api/tenders":
+            self._cors()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _send(self, code, body, ctype="application/json", cors=False):
         b = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
+        if cors:
+            self._cors()
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(b)))
@@ -64,6 +80,12 @@ class Handler(BaseHTTPRequestHandler):
             feed["live"] = True
             feed["needs_key"] = bool(self.team_key)
             return self._send(200, feed)
+        if path == "/api/tenders":
+            con = db.connect()
+            try:
+                return self._send(200, build_public_feed(con), cors=True)
+            finally:
+                con.close()
         if path == "/api/run":
             p = _run["proc"]
             log = LOG.read_text(encoding="utf-8", errors="replace")[-6000:] if LOG.exists() else ""

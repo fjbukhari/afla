@@ -15,6 +15,15 @@ keep_closed_days: 60       # closed tenders stay available (filter "Include clos
 team:
   - {name: Your Name, email: you@example.com}
 
+# Link to the JB Scientific catalogue (adds "Match to catalogue" to every tender):
+# catalogue_url: https://www.jb-scientific.com/catalogue/jbs-catalog.html
+# Also save the tender list next to the catalogue page (a folder that is uploaded to the website).
+# The catalogue's Match tab reads tender-feed.json from its own folder, or from this PC while the
+# dashboard is running.
+# catalogue_feed_path: C:/Website/catalogue/tender-feed.json
+
+read_documents: true       # read item lists from tender documents (PDF/Excel) for catalogue matching
+
 # Only needed if the dashboard is shared on the office network (tw serve --lan):
 # team_key: choose-a-long-random-phrase
 

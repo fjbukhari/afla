@@ -17,6 +17,8 @@ DEFAULTS = {
     "dashboard_port": 8765,
     "keep_closed_days": 60,
     "team": [],
+    "catalogue_url": "https://www.jb-scientific.com/catalogue/jbs-catalog.html",
+    "read_documents": True,
     "email": {},
 }
 

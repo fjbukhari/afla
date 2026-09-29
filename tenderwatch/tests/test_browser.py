@@ -46,6 +46,18 @@ class Fake(BaseHTTPRequestHandler):
                      if page == 1 else
                      [{"tenderNo": "S-3", "tenderTitle": "Hematology analyzer reagents", "procuringAgencyName": "CB Lab Karachi", "closingDate": "2026-10-20T00:00:00"}])
             return self._json({"data": {"items": items, "hasNext": page == 1}})
+        if p == "/docs/items.xlsx":
+            import io
+            from openpyxl import Workbook
+            wb = Workbook(); ws = wb.active
+            for r in (["Tender for lab items"], ["Sr. No", "Item Description", "Qty"], [1, "Taq DNA Polymerase 500 U", 10], [2, "HBsAg ELISA kit 96 tests", 4]):
+                ws.append(r)
+            buf = io.BytesIO(); wb.save(buf); b = buf.getvalue()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.end_headers()
+            self.wfile.write(b)
+            return
         if p == "/login":
             return self._html('<form method="post" action="/login"><input name="username"><input type="password" name="password"><button>Sign in</button></form>')
         if p == "/members":
@@ -111,3 +123,15 @@ def test_login_portal(site, browser, monkeypatch):
     status, recs, err = fetch_source(browser, src, print)
     assert status == "ok", err
     assert recs[0]["title"] == "Next Generation Sequencing Consumables"
+
+
+def test_items_read_from_tender_document(site, browser, tmp_path):
+    from tw import db
+    from tw.items import fetch_items, items_for
+    con = db.connect(tmp_path / "t.db")
+    con.execute("INSERT INTO tenders (id, source, title, relevant, doc_url, closing) VALUES (?,?,?,?,?,?)",
+                ("x:1", "x", "Lab items", 1, site + "/docs/items.xlsx", "2099-01-01"))
+    con.commit()
+    assert fetch_items(browser, con, print) == 1
+    assert items_for(con)["x:1"] == ["Taq DNA Polymerase 500 U", "HBsAg ELISA kit 96 tests"]
+    assert fetch_items(browser, con, print) == 0  # not downloaded twice

@@ -102,3 +102,22 @@ def test_city_and_institute():
     assert city_of("", "Ministry of Health", "Supply of ICT equipment") == ""
     assert institute_of("NUML — National University of Modern Languages") == "NUML"
     assert institute_of("FDE (FDE)") == "FDE"
+
+
+def test_items_from_tender_text():
+    from tw.items import items_from_text, items_from_rows
+    doc = """INSTRUCTIONS TO BIDDERS
+1. Bidders shall submit bids in sealed envelopes.
+2. The procuring agency will evaluate bids.
+3. Bid security shall be 2% of the bid price.
+SCHEDULE OF REQUIREMENTS
+S.No Item Description Qty
+1 Taq DNA Polymerase 500 U 10
+2 dNTP mix 10 mM 5 vials
+3 Agarose molecular biology grade 500 g 2
+4 HBsAg ELISA kit 96 tests 20
+"""
+    items = items_from_text(doc)
+    assert items[0].startswith("Taq DNA Polymerase") and len(items) == 4
+    rows = [["Tender Notice"], ["Sr. No", "Item Description", "Qty"], [1, "Anti-CD3 antibody clone OKT3", 2], [2, "RNase-free water 1L", 5]]
+    assert items_from_rows(rows) == ["Anti-CD3 antibody clone OKT3", "RNase-free water 1L"]

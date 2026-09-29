@@ -82,6 +82,34 @@ link that looks like a tender (tender, NIT, RFQ, quotation, procurement, supply 
 the date found next to it. Large public-sector tenders from these institutions also appear on EPADS or
 their province's portal, which Tender Watch already reads; their own pages mainly add small quotations.
 
+## Matching tenders to the JB Scientific catalogue
+
+Tender Watch and the catalogue page (`jbs-catalog.html`, **Match Customer List** tab) are linked:
+
+1. **Item lists.** After each check, Tender Watch downloads the documents of open relevant tenders
+   (PDF or Excel, using your portal sign-ins) and reads the list of items being bought. The dashboard
+   shows "N items read from the tender document" on each card, and Search also looks inside item lists.
+2. **Match to catalogue.** Every tender card has a **Match to catalogue** link. It opens the catalogue's
+   Match tab (staff view) with that tender's items already matched against the 330,000+ products.
+3. **All open tenders at once.** In the catalogue's Match tab (staff view, `?staff=1`), **Match open
+   tenders** matches every open tender, shows which of our products fit which tender items, filters
+   by word, relevance and closing date, and exports a formatted Excel sheet.
+
+The catalogue reads the tender list from `tender-feed.json` in its own folder, or, if that file is not
+there, live from Tender Watch on the same PC (`http://localhost:8765/api/tenders`, while
+`dashboard.bat` is running). To keep a copy next to the website's catalogue files, set
+`catalogue_feed_path` in `settings.yaml`. The feed has open tenders only and no team notes or statuses.
+
+The catalogue changes are applied with `integrations/catalogue/patch_catalog.py`:
+
+```
+python integrations\catalogue\patch_catalog.py jbs-catalog.html jbs-catalog-new.html
+```
+
+It adds only the Open tenders panel and deep links (`?tab=match&q=...&tender=...`), so it can be
+applied to whichever version of the catalogue is live. Matches are keyword suggestions, the same as
+for uploaded customer lists: check the tender document before quoting.
+
 ## Tuning what counts as relevant
 
 `config\rules.yaml` holds the words that score a tender (strong 3, medium 2, weak 1) and the words that
@@ -104,7 +132,7 @@ dashboard:
 - Python package `tw/`: `extract.py` (maps table headings / JSON keys to fields), `browser.py` (Playwright
   with a persistent profile; login, pagination, JSON capture, UNGM search, JSON APIs), `score.py`,
   `dedup.py`, `db.py` (SQLite in `data/tenders.db`), `server.py` + `web/index.html` (dashboard),
-  `digest.py`, `export.py`.
+  `digest.py`, `export.py`, `items.py` (item lists from tender documents), `places.py` (city/institute).
 - Tests: `pip install pytest` then `python -m pytest`. The browser tests run a headless browser
   against fake portals: a paginated table, a JavaScript app and a sign-in page. On Linux, set
   `TW_BROWSER_EXECUTABLE` if Playwright's Chromium is elsewhere.
