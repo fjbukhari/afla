@@ -7,7 +7,7 @@ from datetime import datetime
 
 from . import DATA_DIR
 from . import secrets
-from .extract import extract_json, extract_tables
+from .extract import extract_json, extract_links, extract_tables
 
 STATE_FILE = DATA_DIR / "session-cookies.json"
 CAPTURE_DIR = DATA_DIR / "captures"
@@ -183,6 +183,8 @@ def collect(page, responses, src):
     """Records visible now: from the page's tables and from JSON the page downloaded."""
     fields = src.get("fields")
     strategy = src.get("strategy", "auto")
+    if strategy == "links":
+        return extract_links(page.content(), page.url, src.get("link_pattern"))
     table = extract_tables(page.content(), page.url, fields) if strategy in ("auto", "table") else []
     js = []
     if strategy in ("auto", "json"):

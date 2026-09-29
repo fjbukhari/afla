@@ -81,3 +81,12 @@ def test_duplicates_across_portals():
 def test_old_feed_rules_are_valid_json_serialisable():
     s = Scorer()
     json.dumps(s.R)
+
+
+def test_link_list_pages():
+    from tw.extract import extract_links
+    recs = extract_links((FX / "uni_tenders.html").read_text(), "https://uni.example.edu.pk/tenders")
+    assert len(recs) == 2
+    assert recs[0]["doc_url"] == "https://uni.example.edu.pk/uploads/nit-lab-chemicals.pdf"
+    assert recs[0]["published"] == "2026-09-28" and recs[0]["closing"] == "2026-10-14"
+    assert "PCR kits" in recs[1]["title"]

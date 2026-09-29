@@ -47,11 +47,12 @@ def mark_duplicates(con):
 def build_feed(con, include_irrelevant=False):
     st = load_settings()
     cutoff = (date.today() - timedelta(days=st["keep_closed_days"])).isoformat()
-    q = "SELECT * FROM tenders WHERE (closing IS NULL OR closing >= ?)"
+    # tenders without a closing date (e.g. PDF notices on institution pages) drop out once the page stops listing them
+    q = "SELECT * FROM tenders WHERE ((closing IS NULL AND last_seen >= ?) OR closing >= ?)"
     if not include_irrelevant:
         q += " AND has_sm=1 AND score >= 1"
     tenders = []
-    for r in con.execute(q + " ORDER BY closing", (cutoff,)):
+    for r in con.execute(q + " ORDER BY closing", (cutoff, cutoff)):
         t = dict(r)
         for k in ("categories", "matched", "excluded"):
             t[k] = json.loads(t[k] or "[]")

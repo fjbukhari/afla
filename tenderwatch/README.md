@@ -75,6 +75,13 @@ It prints the tenders it found with their scores. If it finds nothing, the page 
 `data\captures\my-portal.html`; send that file to whoever maintains the tool so they can set the
 `fields:` or `next:` options for that portal.
 
+### Institution tender pages (universities, hospitals, institutes)
+
+Many institutions post tenders as a list of PDF links. For those add `strategy: links` to the entry: every
+link that looks like a tender (tender, NIT, RFQ, quotation, procurement, supply of...) becomes a row, with
+the date found next to it. Large public-sector tenders from these institutions also appear on EPADS or
+their province's portal, which Tender Watch already reads; their own pages mainly add small quotations.
+
 ## Tuning what counts as relevant
 
 `config\rules.yaml` holds the words that score a tender (strong 3, medium 2, weak 1) and the words that

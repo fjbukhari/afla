@@ -35,7 +35,7 @@ sources:
     name: EPADS (federal e-procurement)
     region: Federal
     group: Pakistan
-    url: https://epads.gov.pk/
+    url: https://www.epads.gov.pk/
     # With your supplier account signed in, EPADS shows more detail and documents:
     login: true
     logged_in_check: "Log ?out|Sign ?out|My (Bids|Profile|Dashboard)"
@@ -48,6 +48,19 @@ sources:
     group: Pakistan
     url: https://eproc.punjab.gov.pk/ActiveTenders.aspx
     max_pages: 60
+
+  - id: epads-punjab
+    name: EPADS Punjab
+    region: Punjab
+    group: Pakistan
+    url: https://punjab.eprocure.gov.pk/
+    url_is_home: true
+
+  - id: ep-punjab
+    name: Punjab e-Procurement System (eP)
+    region: Punjab
+    group: Pakistan
+    url: https://ep.punjab.gov.pk/
 
   - id: kppra
     name: KPPRA Khyber Pakhtunkhwa
@@ -62,10 +75,22 @@ sources:
     url: https://www.healthkp.gov.pk/news/tenders
 
   - id: bppra
-    name: BPPRA Balochistan
+    name: BPPRA Balochistan (e-procurement)
+    region: Balochistan
+    group: Pakistan
+    url: https://www.bppra.gob.pk/
+
+  - id: bppra-old
+    name: BPPRA Balochistan (tender search, older site)
     region: Balochistan
     group: Pakistan
     url: https://bppthree.vdc.services/tenderssearch/
+
+  - id: sppra-ppms
+    name: SPPRA Sindh (PPMS notices)
+    region: Sindh
+    group: Pakistan
+    url: https://ppms.pprasindh.gov.pk/
 
   - id: gbppra
     name: GB PPRA Gilgit-Baltistan
@@ -102,6 +127,85 @@ sources:
     group: Pakistan
     url: https://portalajk.eprocure.gov.pk/#/tenders
     url_is_home: true
+
+  # ------------------------------------------------------------------ Health programmes, labs and agencies (own pages)
+  # These also advertise large tenders on EPADS/PPRA, which are read above. Their own pages add
+  # small purchases (quotations) and documents. strategy: links reads lists of PDF notices.
+  - id: cmu-gf
+    name: CMU AIDS/TB/Malaria (Global Fund grants)
+    region: Federal
+    group: Pakistan institutions
+    url: https://www.cmu.gov.pk/tenders
+    strategy: links
+
+  - id: pfsa
+    name: Punjab Forensic Science Agency
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pfsa.punjab.gov.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address, then set it as url and remove this line
+
+  - id: pfa
+    name: Punjab Food Authority
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pfa.gop.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address
+
+  # ------------------------------------------------------------------ Universities (own tender pages)
+  - id: uhs
+    name: University of Health Sciences Lahore
+    region: Punjab
+    group: Pakistan institutions
+    url: https://uhs.edu.pk/uhsnew/tenders.php
+    strategy: links
+
+  - id: pu
+    name: University of the Punjab
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pu.edu.pk/home/section/tendernotices
+    strategy: links
+
+  - id: fjwu
+    name: Fatima Jinnah Women University
+    region: Federal
+    group: Pakistan institutions
+    url: https://fjwu.edu.pk/tender-notices/
+    strategy: links
+
+  - id: duhs
+    name: Dow University of Health Sciences
+    region: Sindh
+    group: Pakistan institutions
+    url: https://www.duhs.edu.pk/
+    strategy: links
+    enabled: false        # confirm the procurement page address
+
+  - id: kmu
+    name: Khyber Medical University
+    region: KP
+    group: Pakistan institutions
+    url: https://www.kmu.edu.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address
+
+  # ------------------------------------------------------------------ Private / trust hospitals
+  - id: skmch
+    name: Shaukat Khanum Memorial Cancer Hospital
+    region: Punjab
+    group: Pakistan institutions
+    url: https://skmold.shaukatkhanum.org.pk/notices/
+    strategy: links
+
+  - id: indus
+    name: Indus Hospital & Health Network
+    region: Sindh
+    group: Pakistan institutions
+    url: https://tender.tih.org.pk/
+    strategy: auto
 
   # ------------------------------------------------------------------ International / UN
   - id: ungm
@@ -146,6 +250,29 @@ sources:
     region: International
     group: International
     url: https://www.adb.org/projects/tenders/country/pakistan
+    max_pages: 5
+
+  - id: great-gov-uk
+    name: UK Export Opportunities (mirrors Pakistani hospital tenders)
+    region: International
+    group: International
+    url: https://www.great.gov.uk/export-opportunities/opportunities?s=pakistan
+    max_pages: 5
+
+  - id: isdb
+    name: Islamic Development Bank project procurement
+    region: International
+    group: International
+    url: https://www.isdb.org/project-procurement
+    strategy: links
+    max_pages: 1
+
+  - id: unops
+    name: UNOPS eSourcing (needs UNGM registration)
+    region: International
+    group: International
+    url: https://esourcing.unops.org/#/Subscription/TenderList
+    login: false
     max_pages: 5
 
   # ------------------------------------------------------------------ Template for your other sign-in portals

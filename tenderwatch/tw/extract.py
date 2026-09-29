@@ -260,3 +260,44 @@ def extract_json(obj, base_url="", overrides=None, detail_url=None):
         if recs:
             best, best_q = recs, _grid_quality(m, len(recs))
     return best
+
+
+# ---------------------------------------------------------------- link lists
+
+_TENDERISH = re.compile(r"tender|\bNIT\b|\bIFB\b|\bbid|quotation|\bRFQ\b|\bRFP\b|\bEOI\b|expression of interest|"
+                        r"procurement|purchase|supply of|prequalification|pre-qualification|enlistment|invitation", re.I)
+_DATE_IN_TEXT = re.compile(r"\b(\d{1,2}[-/. ](?:\d{1,2}|[A-Za-z]{3,9})[-/. ,]*\d{2,4}|\d{4}-\d{2}-\d{2})\b")
+
+
+def extract_links(html, base_url="", pattern=None):
+    """Institution 'Tenders' pages are often just a list of links to PDF notices.
+    Every link whose text (or its line) looks like a tender becomes a record."""
+    soup = BeautifulSoup(html, "html.parser")
+    for bad in soup.select("nav, header, footer, script, style, noscript"):
+        bad.decompose()
+    rx = re.compile(pattern, re.I) if pattern else _TENDERISH
+    out, seen = [], set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+            continue
+        text = _clean(a.get_text(" "))
+        line_el = a.find_parent(["li", "tr", "p", "div", "article"]) or a
+        line = _clean(line_el.get_text(" "))[:600]
+        title = text if len(text) >= 12 and not re.fullmatch(r"(download|view|click here|pdf|details?|read more)", text, re.I) else line
+        if not rx.search(title) and not rx.search(href):
+            continue
+        url = urljoin(base_url, href)
+        if url in seen:
+            continue
+        seen.add(url)
+        dates = _DATE_IN_TEXT.findall(line)
+        rec = {"title": title, "url": url, "doc_url": url if _is_doc(url) else "",
+               "published": dates[0] if dates else None}
+        m = re.search(r"(?:last date|closing|deadline|due date|submission)[^0-9A-Za-z]{0,20}(" + _DATE_IN_TEXT.pattern + ")", line, re.I)
+        if m:
+            rec["closing"] = m.group(1)
+        rec = _finish(rec, base_url)
+        if rec:
+            out.append(rec)
+    return out
