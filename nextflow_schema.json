@@ -160,7 +160,7 @@
                 "umi_read_structure": {
                     "title": "UMI read structure (inline)",
                     "type": "string",
-                    "description": "fgbio read structures for R1 and R2, e.g. '12M11S+T +T' (QIAseq: 12-base UMI + 11-base spacer at the start of read 2 is written '+T 12M11S+T'), '8M+T 8M+T' (8-base UMI on both reads). M = UMI, S = skip, T = template.",
+                    "description": "fgbio read structures for read 1 and read 2 (M = UMI bases, S = bases to skip, T = the rest is DNA). Examples: '8M+T 8M+T' = 8-base UMI at the start of both reads; '+T 12M11S+T' = QIAseq (12-base UMI then an 11-base spacer at the start of read 2). Check your kit's manual.",
                     "default": "+T +T"
                 },
                 "umi_min_reads": {

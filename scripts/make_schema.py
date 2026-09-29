@@ -65,7 +65,7 @@ SECTIONS = [
         "umi_mode": P("UMIs (unique molecular identifiers)", "string", "none = no UMIs. inline = UMI bases at the start of the reads (give the read structure). read_name = UMI already in the read names (bcl-convert/BCL Convert 'UMI in read header').",
                       "none", enum=["none", "inline", "read_name"],
                       help_text="With UMIs, reads from the same original DNA molecule are merged into one consensus read (fgbio), which removes PCR and sequencing errors: important for low-frequency somatic variants. Duplicate marking is not used."),
-        "umi_read_structure": P("UMI read structure (inline)", "string", "fgbio read structures for R1 and R2, e.g. '12M11S+T +T' (QIAseq: 12-base UMI + 11-base spacer at the start of read 2 is written '+T 12M11S+T'), '8M+T 8M+T' (8-base UMI on both reads). M = UMI, S = skip, T = template.", "+T +T"),
+        "umi_read_structure": P("UMI read structure (inline)", "string", "fgbio read structures for read 1 and read 2 (M = UMI bases, S = bases to skip, T = the rest is DNA). Examples: '8M+T 8M+T' = 8-base UMI at the start of both reads; '+T 12M11S+T' = QIAseq (12-base UMI then an 11-base spacer at the start of read 2). Check your kit's manual.", "+T +T"),
         "umi_min_reads": P("Minimum reads per UMI family", "integer", "Consensus reads need at least this many raw reads. Default: germline 1, somatic 2.", minimum=1),
     }),
     ("steps", "Steps to run", "fas fa-list-check", "Tick or untick steps. Steps that do not apply to your input are skipped automatically.", {

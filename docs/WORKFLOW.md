@@ -1,146 +1,132 @@
-# AFLA workflows (germline and somatic): user guide
+# AFLA technical reference
 
-Education and research use only. Not for clinical diagnosis or patient management.
+For users see `USER_MANUAL.md`; for installation `INSTALL.md`; for teaching `TEACHING_GUIDE.md`.
+Education and research use only.
 
-## What it does
-
-Germline (inherited) small variants, meaning SNVs and small indels, from **Illumina short reads**: gene panels and exomes.
-
-```
-FASTQ ─► fastp ─► bwa mem ─► (mark duplicates) ─► CRAM/BAM ─► coverage (mosdepth)
-                                                        │
-                                                        ▼
-                            target regions (your BED, or regions the reads cover)
-                                                        │
-                                                        ▼
-                     GATK HaplotypeCaller  or  DeepVariant (GPU) ─► normalise + quality label
-                                                        │
-                                                        ▼
-                     Ensembl VEP 115 offline (+ ClinVar, REVEL, AlphaMissense) ─► afla-report.html
-```
-
-You can **start at any point**. Give a FASTQ folder to run everything, a BAM/CRAM to skip alignment, or a VCF
-(from any pipeline, e.g. Galaxy or a sequencing provider) to run annotation and the report only.
-**Every step can be switched on or off** in the "Steps to run" section.
-
-What it does *not* do (yet): ONT data (use EPI2ME's own `wf-human-variation`), somatic or low-frequency
-variants (germline callers expect ~50%/100% allele fractions), CNVs, and ACMG classification.
-
-## AFLA somatic (second EPI2ME workflow)
-
-The same code in **somatic mode**, listed in EPI2ME as **AFLA somatic (Illumina short reads)**. It is for tumour
-panels such as TruSight Myeloid, where variants can be present in only a few % of reads.
-
-- **Caller:** GATK **Mutect2**, then FilterMutectCalls. Down-sampling is switched off, because panels are deep.
-- **Tumour-only** by default. If the input folder also has the patient's **normal** sample, enter its name in
-  *Matched normal sample name*. Every other sample is then called against it, which removes inherited variants
-  much more reliably.
-- **Support filter:** VAF ≥ 2%, ≥ 5 supporting reads, depth ≥ 50. Weaker calls are kept but labelled `LowSupport`.
-- **Optional resources:** a gnomAD af-only germline resource and a panel of normals (PoN) for your own assay.
-- **Report:** an *Origin (hint)* column says *somatic candidate*, *possible germline (VAF ~50%/100%)*,
-  *likely germline (population)* (gnomAD AF > 0.1%), or *likely germline (Mutect2)*. There is also a
-  "somatic candidates only" filter. The defaults are VAF ≥ 2% and population AF ≤ 0.1%.
-- **Amplicon panels:** tick *Amplicon panel*. This switches off duplicate marking (in both workflows). In somatic
-  mode it also stops Mutect2's `strand_bias` and `position` labels from rejecting calls, because amplicon reads come
-  from one strand and start at the primers. Primer/probe sequences are not trimmed (no panel manifest), so variants
-  at amplicon ends need a careful look in IGV.
-- **Base-change QC tile:** the share of each substitution type (C>T, T>C, ...) among PASS SNVs. C>T usually
-  dominates in blood cancers; a strong excess of another type suggests artefacts.
-- **Speed:** Mutect2 is the slow step (~30 min for a myeloid panel). *Mutect2 parallel chunks* can split the work.
-  On this laptop, 6 chunks gave identical calls but were not faster for a panel; it may help for exomes.
-- **Not included (yet):** CNVs, fusions, MSI, TMB, COSMIC/CIViC/OncoKB evidence, and AMP/ASCO/CAP tiering.
-
-**What the TruSight Myeloid test (NA12877 + Horizon) showed, as a teaching example:**
-- DNMT3A p.Arg882His was detected at only 0.3% VAF (11 of 3,927 reads), far below any usable cut-off. The Horizon
-  variants in this sample are probably diluted to very low levels; the product sheet is needed to know the expected
-  variants and levels.
-- In amplicon mode, 152 calls PASS and 33 appear in the default report view (VAF 3–16%). But 56% of PASS SNVs are
-  T>C, an unusual pattern that points to library or polymerase artefacts rather than tumour mutations. The pipeline
-  works; the data needs caution.
-
-Command line: add `--mode somatic` (and `--normal_sample NAME` if you have a normal) to the command below.
-
-## The report (`afla-report.html`, opens in EPI2ME's Report tab)
-
-- **Quality control tiles** with teaching hints: reads, Q30, % mapped, duplicates, mean depth, % of targets ≥20×,
-  Ti/Tv, het/hom ratio.
-- **Coverage**: % of target bases at 10–100×, plus a list of poorly covered regions.
-- **Variant explorer**: filter by PASS, depth, VAF, population frequency (gnomAD v4.1), VEP impact, ClinVar P/LP,
-  your own gene list and free text. It has presets (rare protein-affecting, ClinVar pathogenic, gene list, all),
-  sortable columns, a detail card with links to gnomAD/ClinVar/UCSC/ClinGen/dbSNP, and CSV export.
-- **Methods**: steps run, containers, annotation sources and all parameters.
-
-## Using it in EPI2ME Desktop
-
-1. The workflow is installed as a copy of this repository in `C:\Users\fjbuk\epi2melabs\workflows\fjbukhari\afla`
-   (after changing the code here, run `scripts/install-epi2me.sh`; see the end of this file). It appears in EPI2ME's workflow list
-   as **AFLA germline (Illumina short reads)**. Restart EPI2ME if it doesn't show.
-2. Click it, then **Run**. Fill in the form:
-   - **Input**: one of FASTQ folder / BAM / VCF.
-   - **Reference**: the GRCh38 FASTA with its bwa index next to it.
-   - **Target regions**: the capture-kit BED if you have it. If empty, covered regions are used.
-   - **Steps to run**: tick/untick. For **amplicon** panels tick *Amplicon panel*.
-   - **Annotation sources**: VEP cache folder, Ensembl FASTA (for HGVS names), ClinVar, REVEL, AlphaMissense.
-3. EPI2ME can only see files on the Windows side (`C:\...`), not the Ubuntu home folder. On this laptop the
-   copies for EPI2ME are in `C:\Users\fjbuk\afla-data\`:
-
-   | Form field | File or folder |
-   |---|---|
-   | Reference genome | `afla-data\reference\hg38.analysisSet.fa` (bwa index next to it) |
-   | VEP cache folder | `afla-data\annotation\vep_cache` |
-   | Ensembl FASTA for HGVS | `afla-data\annotation\fasta\Homo_sapiens.GRCh38.dna.primary_assembly.fa` |
-   | ClinVar VCF | `afla-data\annotation\clinvar\clinvar_GRCh38.vcf.gz` |
-   | REVEL scores | `afla-data\annotation\revel\new_tabbed_revel_grch38.tsv.gz` |
-   | AlphaMissense scores | `afla-data\annotation\alphamissense\AlphaMissense_hg38.bare.tsv.gz` |
-
-4. Tested run times (TruSight Myeloid, 2.6 M read pairs, GATK): about 15 minutes in total. Alignment and calling
-   take ~5 minutes each.
-
-## Running it from the Ubuntu terminal (same workflow, no GUI)
-
-```bash
-H=~/jbs-human-refs
-nextflow run ~/afla/main.nf -w ~/afla-runs/<run>/work --out_dir ~/afla-runs/<run>/output \
-  --fastq /mnt/c/path/to/fastq_folder \
-  --ref ~/afla-refs/GRCh38_analysisSet/hg38.analysisSet.fa \
-  --bed /mnt/c/path/to/targets_hg38.bed \
-  --vep_cache $H/vep_cache --vep_fasta $H/fasta/Homo_sapiens.GRCh38.dna.primary_assembly.fa \
-  --clinvar_vcf $H/clinvar/clinvar_GRCh38.vcf.gz \
-  --revel_file $H/revel/new_tabbed_revel_grch38.tsv.gz \
-  --alphamissense_file $H/alphamissense/AlphaMissense_hg38.bare.tsv.gz
-```
-Add `--amplicon true` for amplicon panels, and `--caller deepvariant` for DeepVariant (GPU).
-Add `-resume` to continue a stopped run without redoing finished steps.
-
-## Outputs (`output/`)
-
-| Path | Content |
-|---|---|
-| `afla-report.html` | the interactive report (all samples) |
-| `<sample>/qc/` | fastp report, mosdepth coverage files |
-| `<sample>/alignment/` | CRAM/BAM + index, flagstat, duplicate statistics |
-| `<sample>/variants/` | `<sample>.vcf.gz` (normalised, LowQual-labelled), `.annotated.vcf.gz`, VEP summary |
-| `targets/` | padded target BED actually used |
-| `execution/` | Nextflow run report, timeline, trace |
-
-## Files in this repository
+## Code layout
 
 | File | Role |
 |---|---|
-| `main.nf` | connects the steps; decides the start point and which steps run |
-| `modules/*.nf` | one process per step (command + container) |
-| `nextflow.config` | default settings, Docker, CPU/memory, GPU switch |
-| `nextflow_schema.json` | the EPI2ME form: fields, help texts, defaults |
-| `bin/afla_report.py`, `bin/afla_report_template.html` | report builder (Python standard library only) |
-| `bin/pad_merge_bed.sh` | cleans, pads and merges target BEDs |
-| `tests/data/synthetic_germline.vcf` | synthetic test VCF (ClinVar positions, invented genotypes) |
+| `main.nf` | Orchestration: mode, resources, input type, sample sheet, which steps run, report metadata |
+| `modules/reference.nf` | reference indexes, BED cleaning/padding, automatic targets, primers, microsatellite scan |
+| `modules/reads.nf` | fastp, bwa alignment (+markdup), primer clipping, UMI consensus (fgbio), coverage (mosdepth) |
+| `modules/variants.nf` | GATK/DeepVariant (single or gVCF), joint genotyping (GATK/GLnexus), normalise + labels, ROH, VEP |
+| `modules/somatic.nf` | Mutect2 (chunked), FilterMutectCalls, support filter, MSI (msisensor-pro), Manta |
+| `modules/cnv.nf` | CNVkit targets, coverage, reference (user / leave-one-out / flat), segmentation and calls |
+| `modules/report.nf` | per-case summary JSON and the HTML report |
+| `bin/afla_report.py` | parsers (fastp, flagstat, mosdepth, fgbio, ampliconclip, VCF, CNVkit, Manta, ROH, MSI), inheritance, summary |
+| `bin/afla_acmg.py` | ACMG/AMP evidence suggestions and points |
+| `bin/afla_hpo.py` | HPO parsing and phenotype similarity |
+| `bin/afla_somatic.py` | CIViC/COSMIC/OncoKB evidence, AMP tiers, TMB, MSI interpretation |
+| `bin/afla_report_template.html` | the single-file report (no external libraries) |
+| `nextflow.config` | parameters, machine-size detection, resource labels, profiles |
+| `scripts/make_schema.py` | generates `nextflow_schema.json` (germline form) and `somatic/nextflow_schema.json` |
+| `scripts/afla-setup.sh` | resources installer; `afla-testdata.sh` practice data; `afla-benchmark.sh` RTG vcfeval scoring |
+| `scripts/install-epi2me.sh` | installs the two EPI2ME entries; `afla-cnv-reference.sh` CNV reference from normals |
+| `scripts/manifest_to_primers.py` | Illumina TSCA/TruSeq manifest → primer + insert BED; `panelapp_download.py` PanelApp panels |
 
-## Updating the copies that EPI2ME uses
+## Units of analysis
 
-EPI2ME runs its own copies, `workflows\fjbukhari\afla` (germline) and `workflows\fjbukhari\afla-somatic`
-(the same code plus `somatic/mode.config`, `somatic/nextflow_schema.json` and `somatic/output_definition.json`).
-After changing the code, refresh both copies and restart EPI2ME:
+A *unit* is one germline sample, one **family** (≥ 2 sample-sheet/PED members sharing `family`; genotyped jointly and
+reported under the family name with the proband as main sample), or one **tumour** (paired with the normal of the same
+`family`, or with `normal_sample`). Normal samples get QC-only entries.
 
-```bash
-bash ~/afla/scripts/install-epi2me.sh
+## Parameters
+
+All parameters are in `nextflow.config` (defaults) and the EPI2ME form. Mode-dependent defaults (empty = default):
+
+| Parameter | Germline | Somatic |
+|---|---|---|
+| `min_dp` | 10 | 50 |
+| `report_min_vaf` / `report_max_pop_af` | 0.2 / 0.01 | 0.02 / 0.001 |
+| `umi_min_reads` | 1 | 2 |
+| report file | afla-report.html | afla-somatic-report.html |
+
+Machine size: `max_cpus` = all CPUs, `max_memory` = 85% of RAM (detected by the JVM). Labels: default 1 CPU/2 GB,
+`medium` ≤ 4 CPU/8 GB, `big` ≤ `threads` CPU/24 GB; every request is capped by the machine size.
+
+## Resources folder layout (made by `scripts/afla-setup.sh`)
+
 ```
+afla-resources/
+  reference/GRCh38_no_alt_analysis_set.fa(.fai,.dict,.amb,.ann,.bwt,.pac,.sa)
+  vep/cache/homo_sapiens/115_GRCh38/   vep/fasta/Homo_sapiens.GRCh38.dna.primary_assembly.fa(.fai)   vep/Plugins/*.pm
+  vep/gtf/genes.gtf.gz(.tbi)           (lean install only)
+  clinvar/clinvar.vcf.gz(.tbi)  clinvar/clinvar_protein_index.tsv.gz
+  revel/new_tabbed_revel_grch38.tsv.gz(.tbi)   alphamissense/AlphaMissense_hg38.tsv.gz(.tbi)   spliceai/*.vcf.gz (manual)
+  constraint/gnomad.v4.1.constraint_metrics.tsv   hpo/{hp.obo,genes_to_phenotype.txt}   panelapp/panelapp_*.tsv
+  somatic/{af-only-gnomad.hg38.vcf.gz,1000g_pon.hg38.vcf.gz}(.tbi)   civic/nightly-*.tsv
+  annotation/refFlat.txt   targets/*.bed   msi/*.microsatellites.list
+```
+Chromosome naming: the VEP cache uses `1..22,X,Y,MT`; VCFs with `chr` names are renamed for VEP and back afterwards, so
+ClinVar/REVEL/AlphaMissense are prepared without `chr`. The `--lean` install (GTF, no cache) keeps `chr` everywhere.
+Older layouts (`annotation/vep_cache`, `annotation/clinvar/...`) are also recognised.
+
+## Algorithms
+
+**Read processing.** fastp (`--detect_adapter_for_pe`; QC-only when UMIs are present) → bwa mem `-Y` with read groups →
+`samtools fixmate | sort | markdup -s` (not for amplicons/UMIs) → CRAM. Primer clipping: `samtools ampliconclip --soft-clip
+--both-ends [--strand] --tolerance 5 --filter-len 30`, re-sorted. UMIs: fgbio FastqToBam (read structure or
+`--extract-umis-from-read-names`) → bwa → ZipperBams → SortBam TemplateCoordinate → GroupReadsByUmi (adjacency, 1 edit,
+MAPQ ≥ 20) → CallMolecularConsensusReads (`--min-reads`) → FilterConsensusReads (error rate 0.05, base Q ≥ 20) → bwa →
+ZipperBams → sorted CRAM.
+
+**Germline calling.** GATK HaplotypeCaller in padded targets (or DeepVariant WES/WGS); families: `-ERC GVCF` →
+CombineGVCFs + GenotypeGVCFs (DeepVariant: GLnexus DeepVariantWES/WGS). `bcftools norm -m -both` + left-align, `*` alleles
+removed, labels: LowQual (QUAL/DP/GQ; families QUAL only at site level), LowVAF (het AF < `min_het_vaf`; for families the
+proband's call is labelled in the report).
+
+**Inheritance** (report, proband with parents): de novo = proband het (VAF ≥ 0.25), both parents hom-ref with depth ≥ `min_dp`,
+GQ ≥ `min_gq`, ≤ 1 alt read; lower VAF → "possible de novo". Homozygous / hemizygous (X, male). Inherited from mother/father
+(one parent carries it, the other hom-ref). Compound heterozygous: ≥ 1 rare (AF ≤ 1%) HIGH/MODERATE het variant from each
+parent in the same gene; without parents "possible compound heterozygous (phase unknown)". ROH: `bcftools roh --AF-dflt 0.4 -G 30`.
+
+**ACMG/AMP suggestions** (`afla_acmg.py`; reasons shown in the report; "consider" items are not pre-ticked):
+| Code | Rule |
+|---|---|
+| BA1 | max population AF > 5% (stand-alone) |
+| BS1 | AF > 1% (use a disease-specific threshold) |
+| PM2_Supporting | absent from gnomAD or AF ≤ 1e-5 (consider when ≤ 1e-4) |
+| PVS1 | stop/frameshift/canonical splice/start-loss in a LoF-intolerant gene (gnomAD LOEUF < 0.6 or pLI ≥ 0.9); last exon → Strong; start-loss → Moderate; tolerant gene → consider |
+| PS1 / PM5 | same amino-acid change / other missense at the same residue is ClinVar P/LP (amino-acid index) |
+| PM4 | in-frame indel or stop-loss |
+| PP3 / BP4 | missense REVEL (Pejaver 2022): ≥ 0.932 Strong, ≥ 0.773 Moderate, ≥ 0.644 Supporting; ≤ 0.290 / 0.183 / 0.016 / 0.003 BP4 Supporting / Moderate / Strong / Very strong; AlphaMissense class when REVEL is absent; SpliceAI ≥ 0.2 PP3, ≤ 0.1 BP4 (non-missense) |
+| PP2 | missense in a gene with missense Z ≥ 3.09 (consider) |
+| BP7 | synonymous outside splice region with SpliceAI ≤ 0.1 |
+| PM6 / PM3 | de novo (parentage assumed) / in trans with a P/LP variant (supporting if the partner is not P/LP) |
+Points (Tavtigian 2020): Very strong 8, Strong 4, Moderate 2, Supporting 1 (benign negative); ≥ 10 P, 6–9 LP, 0–5 VUS,
+−1…−6 LB, ≤ −7 B.
+
+**Phenotype score** (`afla_hpo.py`): information content IC(t) = −log(fraction of annotated genes with t or a descendant);
+score = ½·mean over patient terms of max IC of a shared ancestor with the gene's terms (normalised by the patient terms' IC)
++ ½·the same from the gene's side; restricted to "Phenotypic abnormality". 0–1.
+
+**Somatic.** Mutect2 (`--max-reads-per-alignment-start 0`, optional germline resource and PoN; optional chunks balanced by
+bases × depth) → FilterMutectCalls → tumour sample, norm, LowSupport (VAF < `min_vaf`, alt reads < `min_alt_reads`, depth
+< `min_dp`); amplicon mode drops the strand_bias and position labels. TMB = PASS coding non-synonymous variants with VAF ≥
+`tmb_min_vaf`, depth ≥ `min_dp`, population AF < 0.1% / coding Mb in targets (refFlat CDS ∩ targets, else target Mb).
+MSI: msisensor-pro `msi` (paired) or `pro` (tumour-only, threshold or baseline) on microsatellites inside targets;
+interpretation shown with the MSK-IMPACT MSIsensor convention (< 3 stable, 3–10 indeterminate, ≥ 10 high; < 50 sites unreliable).
+Tiers: see USER_MANUAL §5. CIViC matching: exact protein change, codon, exon-level indels, gene-level (any mutation,
+loss of function), amplification/deletion for CNV segments (|log2| ≥ 0.7).
+
+**CNV** (CNVkit, targets only): `target --split --avg-size 267 [--annotate refFlat]` → `coverage` → reference
+(user `.cnn`; else leave-one-out from ≥ 2 other samples of the run (germline) or the normals (somatic); else flat) →
+`fix --no-edge` → `segment -m cbs` → `call -m threshold` (germline −1.1/−0.4/0.3/0.7; somatic −1.1/−0.25/0.2/0.7) →
+`genemetrics`, scatter plot.
+
+**SV** (Manta 1.6, `--exome`, call regions = padded targets): germline `diploidSV`, somatic `tumorSV`/`somaticSV`;
+VEP-annotated; BND mates joined, two different genes → fusion candidate.
+
+## Containers (Docker)
+
+fastp 1.3.7; bwa 0.7.17 + samtools 1.16.1 (mulled) for alignment; samtools 1.21; mosdepth 0.3.10; fgbio 4.1.1;
+GATK 4.6.2.0; DeepVariant 1.9.0 (-gpu); GLnexus 1.4.1; bcftools 1.23.1 (staphb); Ensembl VEP 115.2; CNVkit 0.9.14;
+Manta 1.6.0; msisensor-pro 1.3.0; bedtools 2.31.1; Python 3.12 (report, standard library only).
+
+## Validation so far (development sandbox, chromosome 20 slices of public data)
+
+See `tests/README.md`: GIAB HG002/HG003/HG004 exome trio SNV F1 ≈ 0.997–0.999, indel F1 ≈ 0.87–0.95 (small numbers);
+all entry points, trio labels, CNV, SV, ROH, UMI, primer clipping, somatic pair, MSI, TMB and the report exercised.
+To do on the full laptop install: whole-exome runs, DeepVariant (GPU), GLnexus, real ClinVar/CIViC/PanelApp downloads,
+a real amplicon panel with its manifest, and a DNBSEQ exome.

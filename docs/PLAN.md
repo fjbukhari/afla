@@ -1,6 +1,10 @@
 # Plan: Illumina short-read NGS analysis in EPI2ME Desktop, zero-cost
 
-Status: **proposal v3, Stage 0 not started**. Education and research use only, not for clinical use.
+Status (2026-09-29): **Stages 0–4 implemented** (germline + somatic panels/exomes, amplicon/UMI, CNV, SV, MSI, TMB,
+ACMG/AMP and AMP-tier suggestions, HPO, trios, printable case report, installer, manuals, slides). Validated on chr20 slices
+of public GIAB data in the development sandbox (see `tests/README.md`); full-exome and DeepVariant/GPU validation on the
+laptop is next. Stage 5 (microbiology, metagenomics) not started. The sections below are the original plan, kept for context.
+Education and research use only, not for clinical use.
 
 Constraints (confirmed):
 - **Zero budget:** no hardware upgrades, no paid cloud, no university HPC (not available in Pakistan).
