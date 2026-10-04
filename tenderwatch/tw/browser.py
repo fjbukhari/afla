@@ -54,8 +54,29 @@ class Browser:
             self.pw.stop()
 
 
-def goto(page, url, st):
-    page.goto(url, wait_until="domcontentloaded")
+# A portal interrupting its own first page load is normal, not a failure. Government portals
+# redirect constantly: http to https, www to the vendor subdomain, and a vendor who is already
+# signed in being sent straight to their dashboard. Playwright reports the interrupted first
+# navigation as an error even though the browser has landed somewhere perfectly good, so those
+# two messages are treated as "we arrived, just not where we first asked".
+# Found when a signed-in EPADS account sent www.epads.gov.pk straight to
+# vendors.epads.gov.pk/dashboard and `tw login epads-fed` stopped with a traceback.
+_BENIGN_NAV = ("interrupted by another navigation", "net::ERR_ABORTED")
+
+
+def goto(page, url, st=None):
+    try:
+        page.goto(url, wait_until="domcontentloaded")
+    except Exception as e:
+        if not any(b in str(e) for b in _BENIGN_NAV):
+            raise                       # a real failure: no such host, refused, timed out
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=20000)
+        except Exception:
+            pass
+        # Only a redirect counts as arriving. A blank page means the load really did fail.
+        if not page.url or page.url.startswith("about:"):
+            raise
     settle(page)
 
 
