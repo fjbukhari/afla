@@ -41,3 +41,17 @@ violations.
 UCSC, Ensembl, NCBI and BOLD cannot be reached from the environment these were
 written in, so they are simulated. The design logic is fully exercised; the live
 connections are not, and need one real run in each step after any deployment.
+
+## Tender portal tests
+
+| File | Checks |
+|---|---|
+| `tender_parse.php` | The portal readers and the import from the office PC against hostile and malformed input: empty, truncated and deeply nested pages, XML entity tricks, script and data addresses in links, path traversal in a source name, enormous payloads, 2,000 rows at once, unparseable dates. Runs against a copy in a temporary folder, so live tender data is never touched. |
+| `tender_dedup.php` | Duplicate detection and relevance scoring. Weighted towards the expensive mistake: merging two genuinely different tenders hides one of them, while failing to merge only shows the same tender twice. |
+| `tender_xss.py` | Serves the dashboard a crafted feed where every text field carries a script payload and every address is a `javascript:` one, then checks that nothing executed, no markup was injected, no link carries an unsafe scheme, and ordinary tenders still render. |
+
+```
+php tools-tests/tender_parse.php      # 67 checks
+php tools-tests/tender_dedup.php      # 17 checks
+python3 tools-tests/tender_xss.py     # needs the local server on 127.0.0.1:8900
+```
