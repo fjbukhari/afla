@@ -143,6 +143,38 @@ def signed_in_signals(page, src):
     return out
 
 
+# Phrases a portal shows when its own back end has fallen over. Seen on the office PC:
+# www.epads.gov.pk answering with a page whose entire content was "connection not found".
+# Without this the tool called that "no tender list was recognised", which sends you looking
+# for a layout change that has not happened, or "still looks signed out", which sends you to
+# sign in again. Neither is the problem; the portal is simply down, and the answer is to wait.
+_DOWN_PHRASES = (
+    "connection not found", "service unavailable", "temporarily unavailable",
+    "under maintenance", "database error", "bad gateway", "gateway timeout",
+    "cannot connect", "connection timed out", "internal server error",
+    "server error", "site is down", "503 ", "502 ", "500 ",
+)
+# A real tender page is long, and may legitimately contain these words - one of the tenders in
+# the live database is a "COMPREHENSIVE MAINTENANCE CONTRACT OF NEONATE VENTILATORS". So a page
+# only counts as down when it is BOTH short and matching: a portal reporting its own failure has
+# almost nothing else on it.
+_DOWN_MAX_CHARS = 400
+
+
+def looks_down(page):
+    """A short reason if the portal is answering with its own failure page, otherwise ''."""
+    text = " ".join(body_text(page).split())
+    if len(text) > _DOWN_MAX_CHARS:
+        return ""
+    low = text.lower()
+    for phrase in _DOWN_PHRASES:
+        if phrase.strip() in low:
+            return text[:160] or phrase.strip()
+    if not text:
+        return "the page came back empty"
+    return ""
+
+
 def is_logged_in(page, src):
     """True / False / None, where None honestly means "cannot tell from this page"."""
     sig = signed_in_signals(page, src)
@@ -375,6 +407,9 @@ def fetch_source(browser, src, log):
         status, recs = ADAPTERS[src.get("adapter", "generic")](page, src, browser.st, log)
         if status == "ok" and not recs:
             capture(page, src["id"])
+            down = looks_down(page)
+            if down:
+                return "error", [], "The portal is not responding properly: " + down + " Nothing to do but try later."
             return "empty", [], "Page opened but no tender list was recognised (page saved in data/captures)."
         if status == "needs_login":
             capture(page, src["id"])

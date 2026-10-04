@@ -35,7 +35,12 @@ sources:
     name: EPADS (federal e-procurement)
     region: Federal
     group: Pakistan
-    url: https://www.epads.gov.pk/
+    # Confirmed from the office PC, Oct 2026: www.epads.gov.pk is unreliable - it answered
+    # "connection not found" - while the vendor portal works and is where a signed-in supplier's
+    # tenders and documents actually live. Signing in there was confirmed working ("My Profile"
+    # on vendors.epads.gov.pk/dashboard), so both addresses now point at the vendor portal.
+    url: https://vendors.epads.gov.pk/dashboard
+    login_url: https://vendors.epads.gov.pk/
     # With your supplier account signed in, EPADS shows more detail and documents:
     login: true
     logged_in_check: "Log ?out|Sign ?out|My (Bids|Profile|Dashboard)"

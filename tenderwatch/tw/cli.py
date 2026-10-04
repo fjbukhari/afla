@@ -38,7 +38,7 @@ def cmd_test(a):
 def cmd_login(a):
     """Open a visible browser at the portal so you can sign in yourself (handles CAPTCHA / OTP)."""
     from . import secrets
-    from .browser import Browser, capture, fill_login, goto, is_logged_in, signed_in_signals
+    from .browser import Browser, capture, fill_login, goto, is_logged_in, looks_down, signed_in_signals
     from .settings import load_settings, load_sources
     src = load_sources([a.source])[0]
     br = Browser(load_settings(), headless=False)
@@ -66,6 +66,15 @@ def cmd_login(a):
         if ok:
             found = sig["configured_hit"] or sig["text_hit"] or sig["href_hit"]
             print(f"Signed in: OK.  (saw {found!r} on {sig['url']})")
+        elif looks_down(page):
+            # The portal is answering with its own failure page, so there is nothing to sign in
+            # to. Saying "still looks signed out" here would send you to re-enter a password
+            # that was never the problem.
+            print(f"\n{src['name']} is not responding properly right now:")
+            print(f"  {looks_down(page)}")
+            print(f"  page: {sig['url']}")
+            print("\nThis is the portal, not your sign-in. Your session is kept. Try again later;\n"
+                  "if it stays down for days, check the portal in your normal browser.")
         else:
             # Every logged_in_check in sources.yaml was written without access to the real
             # portal, so a failed check means "this guess did not match", not "you are not
