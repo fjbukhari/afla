@@ -32,7 +32,22 @@ class Browser:
             kw["executable_path"] = settings["browser_executable"]
         elif settings.get("browser_channel"):
             kw["channel"] = settings["browser_channel"]
-        self.ctx = self.pw.chromium.launch_persistent_context(settings["profile_dir"], **kw)
+        try:
+            self.ctx = self.pw.chromium.launch_persistent_context(settings["profile_dir"], **kw)
+        except Exception as e:
+            # Your sign-ins live in one browser profile folder, and Chromium allows only one
+            # window at a time to use it. So leaving the `tw login` window open makes the next
+            # run fail - with a message about a "ProcessSingleton", which says nothing useful to
+            # the person reading it. Say what to do instead.
+            if "ProcessSingleton" in str(e) or "already in use" in str(e):
+                self.pw.stop()
+                raise RuntimeError(
+                    "Another Tender Watch browser window is still open.\n"
+                    "Close it (the window that opened for `tw login`, and any left from an\n"
+                    "earlier run), then try again. Only one can use your saved sign-ins at a time."
+                ) from None
+            self.pw.stop()
+            raise
         self.ctx.set_default_timeout(settings["page_timeout_seconds"] * 1000)
         if STATE_FILE.exists():
             try:
