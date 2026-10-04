@@ -1,0 +1,349 @@
+# Portals Tender Watch reads. Add a portal by copying an entry and changing id/name/url.
+#
+# Most portals need nothing more than a url: Tender Watch opens the page in a real browser,
+# finds the tender table (or the data behind a JavaScript page), maps its columns by their
+# headings and clicks "Next" until the list ends. Test a portal with:  python -m tw test <id> --show
+#
+# Useful keys (all optional):
+#   login: true            portal needs your account. Sign in once with  python -m tw login <id>
+#                          or save the password with  python -m tw set-login <id>  for automatic sign-in.
+#   login_url:             page with the sign-in form (default: url)
+#   logged_in_check:       text (regex) that is only on the page when you are signed in, e.g. "Log ?out"
+#   username_selector / password_selector: CSS selectors if the sign-in form is unusual
+#   strategy: auto|table|json   where the list comes from (auto = whichever finds more rows)
+#   fields: {"Heading or json key": title|org|ref|closing|published|type|location|url|doc_url}
+#   next: CSS selector of the "Next page" button if the automatic one misses it
+#   before: steps to run first, e.g. [{select: "select[name$=length]", value: 100}]
+#   max_pages: pages to read (default in settings.yaml)
+#   detail_url: link pattern for JSON rows, e.g. "https://site/tender/{id}"
+#   url_is_home: true when the portal gives no per-tender link (dashboard then says so)
+#   enabled: false         keep the entry but skip it
+#
+# "verified" notes: these entries were written without access to the portals (they block
+# cloud servers), so the first run on your PC is the real test. `python -m tw sources` shows the result.
+
+sources:
+  # ------------------------------------------------------------------ Pakistan: federal
+  - id: ppra-fed
+    name: PPRA Federal (EPMS)
+    region: Federal
+    group: Pakistan
+    url: https://epms.ppra.gov.pk/public/tenders/active-tenders
+    max_pages: 40
+
+  - id: epads-fed
+    name: EPADS (federal e-procurement)
+    region: Federal
+    group: Pakistan
+    # Confirmed from the office PC, Oct 2026: www.epads.gov.pk is unreliable - it answered
+    # "connection not found" - while the vendor portal works and is where a signed-in supplier's
+    # tenders and documents actually live. Signing in there was confirmed working ("My Profile"
+    # on vendors.epads.gov.pk/dashboard), so both addresses now point at the vendor portal.
+    url: https://vendors.epads.gov.pk/dashboard
+    login_url: https://vendors.epads.gov.pk/
+    # With your supplier account signed in, EPADS shows more detail and documents:
+    login: true
+    logged_in_check: "Log ?out|Sign ?out|My (Bids|Profile|Dashboard)"
+    max_pages: 60
+
+  # ------------------------------------------------------------------ Pakistan: provinces
+  - id: ppra-punjab
+    name: Punjab e-Proc (PPRA)
+    region: Punjab
+    group: Pakistan
+    url: https://eproc.punjab.gov.pk/ActiveTenders.aspx
+    max_pages: 60
+
+  - id: epads-punjab
+    name: EPADS Punjab
+    region: Punjab
+    group: Pakistan
+    url: https://punjab.eprocure.gov.pk/
+    url_is_home: true
+
+  - id: ep-punjab
+    name: Punjab e-Procurement System (eP)
+    region: Punjab
+    group: Pakistan
+    url: https://ep.punjab.gov.pk/
+    # Confirmed from the captured page, Oct 2026: this address is a sign-in form with a CAPTCHA,
+    # and it also demands the browser's location ("Location access is mandatory for security and
+    # audit purposes") - without it the Sign In button refuses. The browser now offers a location
+    # (see Browser.__init__), but the CAPTCHA means the session has to be started by hand:
+    #     tw login ep-punjab
+    login: true
+    login_url: https://ep.punjab.gov.pk/
+    logged_in_check: "Log ?out|Sign ?out|My (Bids|Profile|Dashboard|Tenders)"
+
+  - id: kppra
+    name: KPPRA Khyber Pakhtunkhwa
+    region: KP
+    group: Pakistan
+    url: http://www.kppra.gov.pk/kppra/activetenders.php
+
+  - id: health-kp
+    name: Health Department KP
+    region: KP
+    group: Pakistan
+    url: https://www.healthkp.gov.pk/news/tenders
+    # Confirmed from the captured page, Oct 2026: this page is right, but it is not a table -
+    # it is a list of links, which is now read as well (416 notices were in the captured page).
+    # It is the department's whole archive back to 2019 and the notices carry no closing date,
+    # so only the newest are taken; the rest would otherwise count as open for ever.
+    strategy: links
+    max_items: 40
+
+  - id: bppra
+    name: BPPRA Balochistan (e-procurement)
+    region: Balochistan
+    group: Pakistan
+    # Confirmed from the captured page, Oct 2026: the front page is built by JavaScript and was
+    # still showing "loading" when it was read, so there was nothing to find. Its own tender
+    # route is /Tenders, and it is now given time to finish building the list.
+    url: https://www.bppra.gob.pk/Tenders
+    before:
+      - wait_for: "table tr, [class*=tender] a"
+      - wait: 3
+
+  - id: bppra-old
+    name: BPPRA Balochistan (tender search, older site)
+    region: Balochistan
+    group: Pakistan
+    url: https://bppthree.vdc.services/tenderssearch/
+    # Confirmed from the captured page, Oct 2026: this host no longer answers at all
+    # (ERR_CONNECTION_TIMED_OUT). Balochistan tenders come from the bppra entry above, so this
+    # one is switched off rather than failing on every run. Set enabled: true to try it again.
+    enabled: false
+
+  - id: sppra-ppms
+    name: SPPRA Sindh (PPMS notices)
+    region: Sindh
+    group: Pakistan
+    url: https://ppms.pprasindh.gov.pk/
+    # Confirmed from the office PC, Oct 2026: this site answers ERR_CERT_AUTHORITY_INVALID - its
+    # HTTPS certificate does not check out, so the browser refuses to open it at all. It is read
+    # in a separate browser that does not carry your sign-ins; nothing of yours goes over a
+    # connection that cannot be proven to be with the real portal. These are public notices, so
+    # there is nothing to sign in with here anyway.
+    insecure: true
+
+  - id: gbppra
+    name: GB PPRA Gilgit-Baltistan
+    region: GB
+    group: Pakistan
+    url: https://www.gbppra.gov.pk/procurements/1
+
+  # EPADS 2.0 provincial portals are JavaScript apps: the list is read from the data the page loads.
+  - id: epads2-sindh
+    name: EPADS 2.0 Sindh (SPPRA)
+    region: Sindh
+    group: Pakistan
+    url: https://portalsindh.eprocure.gov.pk/#/
+    strategy: auto
+    url_is_home: true
+
+  - id: epads2-kp
+    name: EPADS 2.0 Khyber Pakhtunkhwa
+    region: KP
+    group: Pakistan
+    url: https://portalkp.eprocure.gov.pk/#/Epadtenders
+    url_is_home: true
+
+  - id: epads2-gb
+    name: EPADS 2.0 Gilgit-Baltistan
+    region: GB
+    group: Pakistan
+    url: https://portalgb.eprocure.gov.pk/#/tenders
+    url_is_home: true
+
+  - id: epads2-ajk
+    name: EPADS 2.0 Azad Jammu & Kashmir
+    region: AJK
+    group: Pakistan
+    url: https://portalajk.eprocure.gov.pk/#/tenders
+    url_is_home: true
+
+  # ------------------------------------------------------------------ Health programmes, labs and agencies (own pages)
+  # These also advertise large tenders on EPADS/PPRA, which are read above. Their own pages add
+  # small purchases (quotations) and documents. strategy: links reads lists of PDF notices.
+  - id: cmu-gf
+    name: CMU AIDS/TB/Malaria (Global Fund grants)
+    region: Federal
+    group: Pakistan institutions
+    url: https://www.cmu.gov.pk/tenders
+    strategy: links
+
+  - id: pfsa
+    name: Punjab Forensic Science Agency
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pfsa.punjab.gov.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address, then set it as url and remove this line
+
+  - id: pfa
+    name: Punjab Food Authority
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pfa.gop.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address
+
+  # ------------------------------------------------------------------ Universities (own tender pages)
+  - id: uhs
+    name: University of Health Sciences Lahore
+    region: Punjab
+    group: Pakistan institutions
+    # Confirmed from the captured page, Oct 2026: this address answers 404 (nginx). As with
+    # ADB, the correct one could not be checked from here. On the office PC:
+    #     tw probe https://uhs.edu.pk/...the tenders page you see in your browser...
+    url: https://uhs.edu.pk/uhsnew/tenders.php
+    strategy: links
+    enabled: false
+
+  - id: pu
+    name: University of the Punjab
+    region: Punjab
+    group: Pakistan institutions
+    url: https://pu.edu.pk/home/section/tendernotices
+    strategy: links
+
+  - id: fjwu
+    name: Fatima Jinnah Women University
+    region: Federal
+    group: Pakistan institutions
+    url: https://fjwu.edu.pk/tender-notices/
+    strategy: links
+
+  - id: duhs
+    name: Dow University of Health Sciences
+    region: Sindh
+    group: Pakistan institutions
+    url: https://www.duhs.edu.pk/
+    strategy: links
+    enabled: false        # confirm the procurement page address
+
+  - id: kmu
+    name: Khyber Medical University
+    region: KP
+    group: Pakistan institutions
+    url: https://www.kmu.edu.pk/
+    strategy: links
+    enabled: false        # confirm the tenders page address
+
+  # ------------------------------------------------------------------ Private / trust hospitals
+  - id: skmch
+    name: Shaukat Khanum Memorial Cancer Hospital
+    region: Punjab
+    group: Pakistan institutions
+    url: https://skmold.shaukatkhanum.org.pk/notices/
+    strategy: links
+
+  - id: indus
+    name: Indus Hospital & Health Network
+    region: Sindh
+    group: Pakistan institutions
+    # Confirmed from the captured page, Oct 2026: this address serves the "Current Vacancies"
+    # page - jobs, not tenders - although the same application does hold tender records
+    # (its page refers to Tender_Id and Tender_Name). The tender page's own address could not be
+    # checked from here. On the office PC:  tw probe <the tender list you see in your browser>
+    url: https://tender.tih.org.pk/
+    strategy: auto
+    enabled: false
+
+  # ------------------------------------------------------------------ International / UN
+  - id: ungm
+    name: UNGM (UN Global Marketplace)
+    region: International
+    group: International
+    adapter: ungm
+    url: https://www.ungm.org/Public/Notice
+    login: true
+    login_url: https://www.ungm.org/Login
+    logged_in_check: "Log ?out|Sign ?out|My UNGM|My Profile"
+    max_pages: 3          # per keyword, 50 notices per page
+    # UNGM is searched by these words (title search); leave "" in the list to also get the newest notices of any kind.
+    keywords: [reagent, laboratory, diagnostic, PCR, sequencing, ELISA, "test kit", vaccine, "cold chain",
+               "medical supplies", "medical equipment", pharmaceutical, microscope, "blood bank", HIV, tuberculosis,
+               malaria, hepatitis]
+    # To restrict to Pakistan, add the UNGM country id(s) here after checking them on the site:
+    # payload: {Countries: ["..."]}
+
+  - id: undp
+    name: UNDP procurement notices
+    region: International
+    group: International
+    url: https://procurement-notices.undp.org/
+    max_pages: 5
+
+  - id: worldbank
+    name: World Bank procurement (Pakistan)
+    region: International
+    group: International
+    adapter: json_api
+    url: https://projects.worldbank.org/en/projects-operations/procurement?srce=both&countrycode_exact=PK
+    api_url: "https://search.worldbank.org/api/v2/procnotices?format=json&countrycode_exact=PK&rows={size}&os={offset}&srt=noticedate&order=desc"
+    page_size: 100
+    max_pages: 3
+    fields: {bid_description: title, contact_organization: org, id: ref, submission_deadline_date: closing,
+             noticedate: published, notice_type: type, project_ctry_name: location}
+    detail_url: "https://projects.worldbank.org/en/projects-operations/procurement-detail/{id}"
+
+  - id: adb
+    name: Asian Development Bank tenders (Pakistan)
+    region: International
+    group: International
+    # Confirmed from the captured page, Oct 2026: this address answers 404. The right one
+    # could not be established from here, because ADB's site cannot be reached from the machine
+    # this was fixed on. On the office PC, find the Pakistan tender list in your browser and
+    # check the address with:   tw probe <address>
+    # then put it here. Switched off until then so it does not fail on every run.
+    url: https://www.adb.org/projects/tenders/country/pakistan
+    max_pages: 5
+    enabled: false
+
+  - id: great-gov-uk
+    name: UK Export Opportunities (mirrors Pakistani hospital tenders)
+    region: International
+    group: International
+    url: https://www.great.gov.uk/export-opportunities/opportunities?s=pakistan
+    max_pages: 5
+    # Confirmed from the captured page, Oct 2026: this address no longer serves export
+    # opportunities - it lands on "Invest in the UK - Business.gov.uk", with no tender links at
+    # all. The service appears to have been withdrawn, so it is switched off rather than
+    # reporting a failure every run.
+    enabled: false
+
+  - id: isdb
+    name: Islamic Development Bank project procurement
+    region: International
+    group: International
+    url: https://www.isdb.org/project-procurement
+    strategy: links
+    max_pages: 1
+
+  - id: unops
+    name: UNOPS eSourcing (needs UNGM registration)
+    region: International
+    group: International
+    url: https://esourcing.unops.org/#/Subscription/TenderList
+    # Confirmed from the captured page, Oct 2026: it answered with its sign-in page - "you must
+    # have created a UNGM account before accessing UNOPS eSourcing. Login with your UNGM
+    # account". It was marked as needing no sign-in, so it was read while signed out and of
+    # course showed no tenders. Use your UNGM username and password:
+    #     tw set-login unops
+    login: true
+    login_url: https://esourcing.unops.org/
+    logged_in_check: "Log ?out|Sign ?out|My (Tenders|Profile|Subscriptions)"
+    max_pages: 5
+
+  # ------------------------------------------------------------------ Template for your other sign-in portals
+  - id: example-login
+    name: Example portal that needs sign-in
+    enabled: false
+    region: Federal
+    group: Pakistan
+    url: https://example.org/tenders/active
+    login: true
+    login_url: https://example.org/login
+    logged_in_check: "Log ?out"

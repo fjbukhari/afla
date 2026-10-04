@@ -1,0 +1,77 @@
+TENDER WATCH - UPDATE OF 4 OCTOBER 2026
+=======================================
+This fixes the portals that said "no tender list was recognised" on your first real run.
+It was written from the 19 pages you sent in captures.zip.
+
+
+WHAT TO DO (two minutes)
+
+1. Close any Tender Watch browser window, and the dashboard window if it is open.
+
+2. Copy these files into C:\Users\fjbuk\TenderWatch, replacing the ones there:
+
+       tw\extract.py
+       tw\browser.py
+       tw\cli.py
+       config\sources.yaml
+
+   Keep the folders: tw\ files go in the tw folder, config\ files in the config folder.
+
+   DO NOT replace config\settings.yaml - that is yours and holds the website address.
+   Your sign-ins are untouched; they are in Windows, not in these files.
+
+3. Double-click run.bat.
+
+
+WHAT SHOULD CHANGE
+
+   Punjab e-Proc (PPRA)     was 0, should now read about 100 tenders
+   Health Department KP     was 0, should now read the 40 newest notices
+   UNDP                     was 0, should now read its notices
+   BPPRA Balochistan        now reads its /Tenders page and waits for it to load
+
+   The five EPADS portals were being refused by a firewall, not by their sign-in. You can
+   see it in the page they sent back: "Web Page Blocked! ... Attack ID: 20000051". The one
+   difference between that and your own successful sign-in by hand is that the program said
+   it was running without a window, so it no longer says that. Whether that satisfies the
+   firewall can only be seen on your PC - run run.bat and look at what EPADS says now. If it
+   is still blocked, the message will say so plainly instead of blaming the layout.
+
+   UNOPS now asks for a sign-in, which it always needed (it uses your UNGM account):
+       tw set-login unops
+
+   Punjab eP (ep.punjab.gov.pk) will not let anyone sign in without the browser's location
+   and has a CAPTCHA, so it needs doing by hand once:
+       tw login ep-punjab
+
+   Four portals are switched off because the address in the program is no longer their
+   tender list - ADB and UHS answer "404 not found", Indus Hospital answers with its jobs
+   page, and UK Export Opportunities no longer carries tenders at all.
+
+
+FOR THE FOUR SWITCHED-OFF ONES - THE ONE THING I CANNOT DO FROM HERE
+
+   Those sites refuse connections from anywhere outside Pakistan, so I cannot see them and
+   will not guess their addresses. Your PC can see them. There is now a command that checks
+   an address in one line:
+
+       tw probe https://uhs.edu.pk/whatever-page-you-see-in-your-browser
+
+   Open the site in Edge, find the page that lists the tenders, copy the address from the
+   address bar, and run the line above with it. It tells you how many tenders it found and
+   prints the line to paste into config\sources.yaml. Nothing is saved and nothing is sent.
+
+   The four to check:
+       adb            Asian Development Bank, Pakistan tenders
+       uhs            University of Health Sciences Lahore
+       indus          Indus Hospital & Health Network
+       great-gov-uk   UK Export Opportunities (may simply be gone)
+
+   Or just send me the addresses and I will put them in.
+
+   `tw probe` also works for any portal that changes its layout later.
+
+
+IF SOMETHING LOOKS WRONG
+   The page each portal actually sent is saved in data\captures\. Zip that folder and send
+   it, as you did before - it is what made this update possible.

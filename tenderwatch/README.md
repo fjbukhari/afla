@@ -75,11 +75,34 @@ It prints the tenders it found with their scores. If it finds nothing, the page 
 `data\captures\my-portal.html`; send that file to whoever maintains the tool so they can set the
 `fields:` or `next:` options for that portal.
 
+### Checking an address before you add it
+
+A portal often publishes its tenders somewhere other than its front page, and addresses change.
+`tw probe` opens any address and says what a run would find there, without saving anything or
+touching the database:
+
+```
+tw probe https://uhs.edu.pk/the-page-that-lists-the-tenders
+```
+
+It prints the tenders it recognised, how many are relevant to us, and the line to paste into
+`sources.yaml`. If it finds nothing it says so and saves the page in `data\captures\`. Add
+`--show` to watch it, `--login` to use your saved sign-in, `--strategy links` for a page of PDF
+links. This is the quickest way to fix a portal whose address or layout has changed - and the only
+way to check portals that refuse connections from outside Pakistan.
+
 ### Institution tender pages (universities, hospitals, institutes)
 
-Many institutions post tenders as a list of PDF links. For those add `strategy: links` to the entry: every
+Many institutions post tenders as a list of PDF links, or of links to a notice page. That is now tried
+automatically whenever a page has no table and no JSON, and you can pin it with `strategy: links`: every
 link that looks like a tender (tender, NIT, RFQ, quotation, procurement, supply of...) becomes a row, with
-the date found next to it. Large public-sector tenders from these institutions also appear on EPADS or
+the date found next to it. Only links belonging to a list of at least three of the same shape are taken,
+or links straight to a document, so a stray link in a page's footer does not become a tender.
+
+Some of these pages are an archive rather than a list of what is open - the KP health department's page
+carries every notice back to 2019, none of them with a closing date - and a tender with no closing date
+counts as open while the page lists it. For those add `max_items: 40`: the pages are newest-first, so only
+the newest are taken. Large public-sector tenders from these institutions also appear on EPADS or
 their province's portal, which Tender Watch already reads; their own pages mainly add small quotations.
 
 ## Matching tenders to the JB Scientific catalogue
@@ -125,7 +148,11 @@ dashboard:
 - **green**: read fine.
 - **sign in** (violet): run `tw login <id>`.
 - **no list** / **error** (amber): click it on the dashboard for what to do. Usually one line in
-  `sources.yaml` (`fields:` or `next:`) fixes it.
+  `sources.yaml` (`fields:` or `next:`) fixes it, or the address has moved - check the new one with
+  `tw probe <address>`.
+- **firewall refused us**: a firewall in front of the portal rejected this PC, so no list was ever
+  sent. It is not a sign-in problem and not a layout change. Open the same address in Edge on that PC:
+  if it opens there, send the saved page from `data\captures\`.
 
 ## For maintainers
 

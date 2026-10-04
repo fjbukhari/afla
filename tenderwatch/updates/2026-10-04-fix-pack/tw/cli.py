@@ -1,0 +1,291 @@
+"""Command line: python -m tw <command>. Run `python -m tw -h` for the list."""
+import argparse
+import getpass
+import sys
+
+from . import db
+
+
+def cmd_run(a):
+    from .runner import run
+    summary = run(a.sources or None, headless=False if a.show else None)
+    bad = [s for s in summary if s[1] != "ok"]
+    print(f"\nDone: {len(summary) - len(bad)} of {len(summary)} portals read.")
+    for sid, status, *_rest, err in bad:
+        print(f"  {sid}: {status} {('- ' + err) if err else ''}")
+
+
+def cmd_test(a):
+    """Read one portal and print what was found, without saving anything."""
+    from .browser import Browser, fetch_source
+    from .score import Scorer
+    from .settings import load_settings, load_sources
+    src = load_sources([a.source])[0]
+    br = Browser(load_settings(), headless=not a.show)
+    try:
+        status, recs, err = fetch_source(br, src, print)
+    finally:
+        br.close()
+    sc = Scorer()
+    print(f"\nStatus: {status}  rows: {len(recs)}  {err}")
+    for r in recs[: a.n]:
+        s = sc.score(r["title"], r.get("org", ""), r.get("type", ""))
+        print(f"- [{'REL' if s['relevant'] else '   '} {s['score']:>2}] {r['title'][:90]}")
+        print(f"      org={r.get('org', '')[:50]!r} ref={r.get('ref', '')!r} closing={r.get('closing')} "
+              f"published={r.get('published')}\n      url={r.get('url', '')[:100]}")
+
+
+def cmd_probe(a):
+    """Open any address and say what a run would find there, saving nothing.
+
+    Four portals answered from an address that is no longer their tender list: ADB and UHS
+    answer 404, the Indus Hospital address serves its vacancies page. The correct addresses
+    cannot be guessed from outside Pakistan - the sites refuse connections from anywhere else -
+    so this exists to check one in a single line from the PC that can actually see them:
+        tw probe https://uhs.edu.pk/the-page-you-see-in-your-browser
+    It prints what it found and the two lines to paste into config/sources.yaml.
+    """
+    from .browser import Browser, fetch_source
+    from .score import Scorer
+    from .settings import load_settings
+    src = {"id": "probe", "name": a.url, "url": a.url, "max_pages": 1,
+           "strategy": a.strategy, "insecure": a.insecure}
+    if a.login:
+        src.update(login=True, login_url=a.url)
+    br = Browser(load_settings(), headless=not a.show)
+    try:
+        status, recs, err = fetch_source(br, src, print)
+    finally:
+        br.close()
+    print(f"\n{a.url}\n  result: {status}   tenders found: {len(recs)}")
+    if err:
+        print(f"  {err}")
+    if not recs:
+        print("\nNothing was recognised as a tender list here. The page it read is saved in\n"
+              "data/captures - send that file to whoever maintains this tool, or try the address\n"
+              "of the list itself rather than the portal's front page.")
+        return
+    sc = Scorer()
+    for r in recs[: a.n]:
+        s = sc.score(r["title"], r.get("org", ""), r.get("type", ""))
+        print(f"  [{'relevant' if s['relevant'] else '        '}] {r['title'][:88]}")
+        print(f"      buyer={r.get('org', '')[:46]!r} closing={r.get('closing')}")
+    rel = sum(1 for r in recs if sc.score(r["title"], r.get("org", ""), r.get("type", ""))["relevant"])
+    print(f"\n{len(recs)} tenders, {rel} of them relevant to us. This address works. Put it in\n"
+          f"config/sources.yaml under the portal it belongs to:\n\n    url: {a.url}")
+    if a.strategy != "auto":
+        print(f"    strategy: {a.strategy}")
+    print("\nand remove the  enabled: false  line under it if there is one.")
+
+
+def cmd_login(a):
+    """Open a visible browser at the portal so you can sign in yourself (handles CAPTCHA / OTP)."""
+    from . import secrets
+    from .browser import (Browser, capture, fill_login, goto, is_logged_in, looks_blocked,
+                          looks_down, signed_in_signals)
+    from .settings import load_settings, load_sources
+    src = load_sources([a.source])[0]
+    br = Browser(load_settings(), headless=False)
+    try:
+        page = br.ctx.new_page()
+        goto(page, src.get("login_url") or src["url"], br.st)
+        user, pw = secrets.get_login(src["id"])
+        if user and pw:
+            fill_login(page, src, user, pw)
+            print("Your saved username/password were filled in.")
+        input(f"\nSign in to {src['name']} in the browser window.\n"
+              "When you can see your account (or the tender list), come back here and press Enter... ")
+
+        # Check the page you are actually on first. Navigating back to the portal's front page
+        # before looking was its own bug: on a portal that does not bounce a signed-in user
+        # onward, that lands on the public landing page, which of course looks signed out.
+        ok = is_logged_in(page, src)
+        sig = signed_in_signals(page, src)
+        if not ok:
+            goto(page, src["url"], br.st)
+            ok = is_logged_in(page, src)
+            if ok:
+                sig = signed_in_signals(page, src)
+
+        if ok:
+            found = sig["configured_hit"] or sig["text_hit"] or sig["href_hit"]
+            print(f"Signed in: OK.  (saw {found!r} on {sig['url']})")
+        elif looks_blocked(page):
+            # A firewall in front of the portal is refusing this PC, so there is no sign-in
+            # page to sign in to. Say so plainly rather than blaming the password.
+            print(f"\n{src['name']} is being refused by a firewall, not by the portal's sign-in:")
+            print(f"  {looks_blocked(page)}")
+            print(f"  page: {sig['url']}")
+            cap = capture(page, src["id"] + "-blocked")
+            if cap:
+                print(f"  saved: {cap}")
+            print("\nYour session is kept. Open the same address in your normal browser on this PC:\n"
+                  "if it opens there, send the saved page to whoever maintains this tool.")
+        elif looks_down(page):
+            # The portal is answering with its own failure page, so there is nothing to sign in
+            # to. Saying "still looks signed out" here would send you to re-enter a password
+            # that was never the problem.
+            print(f"\n{src['name']} is not responding properly right now:")
+            print(f"  {looks_down(page)}")
+            print(f"  page: {sig['url']}")
+            print("\nThis is the portal, not your sign-in. Your session is kept. Try again later;\n"
+                  "if it stays down for days, check the portal in your normal browser.")
+        else:
+            # Every logged_in_check in sources.yaml was written without access to the real
+            # portal, so a failed check means "this guess did not match", not "you are not
+            # signed in". You can see the browser; the program cannot. So it asks, and saves
+            # the page so the check can be corrected properly.
+            cap = capture(page, src["id"] + "-login")
+            print("\nCould not confirm the sign-in automatically.")
+            print(f"  page    : {sig['url']}")
+            print(f"  title   : {sig['title']}")
+            print(f"  looking : {src.get('logged_in_check') or '(nothing configured)'}")
+            if cap:
+                print(f"  saved   : {cap}")
+            ans = input("\nIn the browser window, does it show you signed in? [y/N] ").strip().lower()
+            if ans.startswith("y"):
+                print("Saved. Send the file above to whoever maintains this tool so the check\n"
+                      "can be corrected; until then this portal will say 'sign in' on the dashboard\n"
+                      "even though it works.")
+            else:
+                print("Not saved as signed in. Try again, or check the browser window.")
+    finally:
+        br.close()
+
+
+def cmd_set_login(a):
+    from . import secrets
+    user = input(f"Username for {a.source}: ").strip()
+    pw = getpass.getpass("Password (not shown): ")
+    secrets.set_login(a.source, user, pw)
+    print("Saved in Windows Credential Manager (service 'tenderwatch'). It is never written to any file.")
+
+
+def cmd_forget_login(a):
+    from . import secrets
+    secrets.delete_login(a.source)
+    print("Removed.")
+
+
+def cmd_serve(a):
+    from .server import serve
+    from .settings import load_settings
+    st = load_settings()
+    serve(a.port or st["dashboard_port"], a.lan, st.get("team_key", "") if a.lan else "")
+
+
+def cmd_export(a):
+    from .export import export_csv, export_html
+    print("Written:", export_csv(a.path) if a.csv else export_html(a.path, a.bare))
+
+
+def cmd_digest(a):
+    from .digest import send
+    send(a.dry_run)
+
+
+def cmd_push(a):
+    from .push import push
+    push()
+
+
+def cmd_rescore(a):
+    from .runner import mark_duplicates, write_feed
+    from .score import Scorer
+    con = db.connect()
+    db.rescore(con, Scorer())
+    mark_duplicates(con)
+    write_feed(con)
+    print("Rescored with the current config/rules.yaml.")
+
+
+def cmd_import_old(a):
+    """Bring tenders (and team notes) over from the first Tender Watch's data/tenders.json."""
+    import json
+    from .runner import mark_duplicates, write_feed
+    from .score import Scorer
+    old = json.load(open(a.path, encoding="utf-8"))
+    con = db.connect()
+    names = {s["id"]: s for s in old.get("sources", [])}
+    by_src = {}
+    for t in old.get("tenders", []):
+        by_src.setdefault(t["source"], []).append(t)
+    sc = Scorer()
+    for sid, recs in by_src.items():
+        s = names.get(sid, {})
+        started = db.now()
+        new, rel = db.upsert(con, {"id": sid, "name": s.get("name", recs[0].get("source_name", sid)),
+                        "region": s.get("region", recs[0].get("region", "")), "url": s.get("url", "")}, recs, sc)
+        db.log_run(con, sid, started, True, "ok", len(recs), new, rel, "Imported from the first Tender Watch")
+        for t in recs:  # keep the original first-seen dates
+            con.execute("UPDATE tenders SET first_seen=? WHERE id=?", (t.get("first_seen"), db.tender_id(sid, t)))
+    for tid, n in (old.get("notes") or {}).items():
+        db.set_note(con, tid, n.get("status"), n.get("note"), n.get("by", ""))
+    con.commit()
+    mark_duplicates(con)
+    write_feed(con)
+    print(f"Imported {sum(map(len, by_src.values()))} tenders from {len(by_src)} portals.")
+
+
+def cmd_sources(a):
+    from .runner import build_feed
+    con = db.connect()
+    for s in build_feed(con)["sources"]:
+        flag = "login" if s["login"] else "public"
+        on = "" if s["enabled"] else " (disabled)"
+        print(f"{s['id']:<18} {flag:<6} {s['status']:<11} {s['relevant']:>4} relevant  last ok: {s['last_ok'] or '-'}"
+              f"  {s['name']}{on}")
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="tw", description="Tender Watch: collect and review tenders.")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("run", help="read portals and update the database")
+    s.add_argument("sources", nargs="*", help="source ids (default: all enabled)")
+    s.add_argument("--show", action="store_true", help="show the browser window while it works")
+    s.set_defaults(f=cmd_run)
+    s = sub.add_parser("test", help="read one portal and print results without saving")
+    s.add_argument("source")
+    s.add_argument("--show", action="store_true")
+    s.add_argument("-n", type=int, default=15)
+    s.set_defaults(f=cmd_test)
+    for name, fn, h in (("login", cmd_login, "sign in to a portal by hand in a visible browser"),
+                        ("set-login", cmd_set_login, "save a portal username/password in Windows Credential Manager"),
+                        ("forget-login", cmd_forget_login, "remove a saved username/password")):
+        s = sub.add_parser(name, help=h)
+        s.add_argument("source")
+        s.set_defaults(f=fn)
+    s = sub.add_parser("probe", help="check what an address would give, without changing anything")
+    s.add_argument("url")
+    s.add_argument("--strategy", default="auto", choices=["auto", "table", "links", "json"],
+                   help="how to read the page (default: work it out)")
+    s.add_argument("--login", action="store_true", help="use your saved sign-in for this site")
+    s.add_argument("--insecure", action="store_true",
+                   help="allow a site whose HTTPS certificate does not check out")
+    s.add_argument("--show", action="store_true", help="show the browser window")
+    s.add_argument("-n", type=int, default=10)
+    s.set_defaults(f=cmd_probe)
+    s = sub.add_parser("serve", help="open the dashboard at http://localhost:8766")
+    s.add_argument("--port", type=int)
+    s.add_argument("--lan", action="store_true", help="also allow colleagues on the office network")
+    s.set_defaults(f=cmd_serve)
+    s = sub.add_parser("export", help="write a shareable HTML snapshot (or --csv for Excel)")
+    s.add_argument("path", nargs="?")
+    s.add_argument("--csv", action="store_true")
+    s.add_argument("--bare", action="store_true", help=argparse.SUPPRESS)
+    s.set_defaults(f=cmd_export)
+    s = sub.add_parser("digest", help="email new relevant tenders (see settings.yaml)")
+    s.add_argument("--dry-run", action="store_true")
+    s.set_defaults(f=cmd_digest)
+    sub.add_parser("push", help="send this PC's tenders to the website tender portal").set_defaults(f=cmd_push)
+    sub.add_parser("rescore", help="re-apply config/rules.yaml to stored tenders").set_defaults(f=cmd_rescore)
+    s = sub.add_parser("import-old", help="import data/tenders.json from the first Tender Watch")
+    s.add_argument("path")
+    s.set_defaults(f=cmd_import_old)
+    sub.add_parser("sources", help="list portals and their last result").set_defaults(f=cmd_sources)
+    a = p.parse_args(argv)
+    a.f(a)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
