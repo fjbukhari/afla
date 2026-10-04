@@ -249,10 +249,19 @@ def extract_json(obj, base_url="", overrides=None, detail_url=None):
                 if k in rec:
                     rec[k] = str(rec[k])
             if detail_url and not rec.get("url"):
+                # Both the tidied field names and the original ones are offered to the template,
+                # so detail_url can use either. They must be merged into ONE mapping first:
+                # passing two sets of keyword arguments fails the moment a name appears in both,
+                # which is exactly what the World Bank feed does - it has a field called "id",
+                # and the tidied form of "id" is also "id". That raised
+                #   TypeError: str.format() got multiple values for keyword argument 'id'
+                # and, because TypeError was not caught below, took the whole portal down with it.
+                keys = {_words(k).replace(" ", "_"): v for k, v in f.items()}
+                keys.update(f)                      # the feed's own names win
                 try:
-                    rec["url"] = detail_url.format(**{_words(k).replace(" ", "_"): v for k, v in f.items()}, **f)
-                except (KeyError, IndexError, ValueError):
-                    pass
+                    rec["url"] = detail_url.format(**keys)
+                except (KeyError, IndexError, ValueError, TypeError):
+                    pass                            # one odd record must never stop a portal
             rec = _finish(rec, base_url)
             if rec:
                 rec["raw"] = {k: v for k, v in f.items() if isinstance(v, (str, int, float)) and len(str(v)) < 300}

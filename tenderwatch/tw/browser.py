@@ -415,9 +415,44 @@ def fetch_json_api(page, src, st, log):
 ADAPTERS = {"generic": fetch_generic, "ungm": fetch_ungm, "json_api": fetch_json_api}
 
 
+def _insecure_page(browser, src, log):
+    """A page for a portal whose HTTPS certificate does not check out.
+
+    Several Pakistani government sites serve an expired or self-signed certificate -
+    ppms.pprasindh.gov.pk answered ERR_CERT_AUTHORITY_INVALID on the office PC's first run - and
+    the browser refuses to open them at all. A source can opt in with `insecure: true`.
+
+    It gets a SEPARATE, throwaway browser with no access to your saved sign-ins, for two reasons.
+    A certificate that cannot be verified means the connection cannot be proven to be with the
+    real portal, so nothing of yours should travel over it; and relaxing the check for one portal
+    must not relax it for the portals you do sign in to. Signing in over such a connection is
+    refused outright - see fetch_source.
+    """
+    kw = dict(headless=browser.st.get("headless", True))
+    if browser.st.get("browser_executable"):
+        kw["executable_path"] = browser.st["browser_executable"]
+    elif browser.st.get("browser_channel"):
+        kw["channel"] = browser.st["browser_channel"]
+    b = browser.pw.chromium.launch(**kw)
+    ctx = b.new_context(ignore_https_errors=True, viewport={"width": 1366, "height": 900},
+                        locale="en-GB", timezone_id="Asia/Karachi")
+    log(f"  {src['id']}: certificate not verified, reading it in a separate browser with no sign-ins")
+    return b, ctx, ctx.new_page()
+
+
 def fetch_source(browser, src, log):
     """Returns (status, records, error). status: ok | empty | needs_login | error."""
-    page = browser.ctx.new_page()
+    insecure = bool(src.get("insecure"))
+    if insecure and src.get("login"):
+        # Never send a password over a connection whose certificate cannot be verified.
+        return "error", [], ("This portal is marked insecure (its certificate does not check out) "
+                             "and also needs a sign-in. Those cannot be combined: remove one of "
+                             "them in config/sources.yaml.")
+    extra_browser = extra_ctx = None
+    if insecure:
+        extra_browser, extra_ctx, page = _insecure_page(browser, src, log)
+    else:
+        page = browser.ctx.new_page()
     try:
         status, recs = ADAPTERS[src.get("adapter", "generic")](page, src, browser.st, log)
         if status == "ok" and not recs:
@@ -439,6 +474,12 @@ def fetch_source(browser, src, log):
     finally:
         browser.save_cookies()
         page.close()
+        if extra_ctx is not None:
+            try:
+                extra_ctx.close()
+                extra_browser.close()
+            except Exception:
+                pass
 
 
 def capture(page, sid):

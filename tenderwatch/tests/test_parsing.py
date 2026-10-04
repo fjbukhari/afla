@@ -121,3 +121,33 @@ S.No Item Description Qty
     assert items[0].startswith("Taq DNA Polymerase") and len(items) == 4
     rows = [["Tender Notice"], ["Sr. No", "Item Description", "Qty"], [1, "Anti-CD3 antibody clone OKT3", 2], [2, "RNase-free water 1L", 5]]
     assert items_from_rows(rows) == ["Anti-CD3 antibody clone OKT3", "RNase-free water 1L"]
+
+
+def test_detail_url_with_a_field_called_id():
+    """The World Bank feed has a field named 'id', and the tidied form of 'id' is also 'id'.
+
+    Offering both sets of names to the template as two separate keyword mappings failed with
+    "str.format() got multiple values for keyword argument 'id'", and since TypeError was not
+    caught, it took the whole portal down rather than skipping one record. Reported from the
+    office PC's first real run.
+    """
+    from tw.extract import extract_json
+    rows = [{"id": "OP00123", "bid_description": "Supply of laboratory reagents",
+             "contact_organization": "Ministry of Health",
+             "submission_deadline_date": "2026-12-01", "noticedate": "2026-10-01"}]
+    fields = {"bid_description": "title", "contact_organization": "org", "id": "ref",
+              "submission_deadline_date": "closing", "noticedate": "published"}
+    out = extract_json({"procnotices": rows}, "https://projects.worldbank.org/", fields,
+                       "https://projects.worldbank.org/en/projects-operations/procurement-detail/{id}")
+    assert len(out) == 1
+    assert out[0]["url"].endswith("/procurement-detail/OP00123")
+    assert out[0]["title"] == "Supply of laboratory reagents"
+
+
+def test_a_broken_detail_url_skips_only_that_record():
+    """A template naming something the feed does not have must not lose the tender itself."""
+    from tw.extract import extract_json
+    rows = [{"id": "A1", "bid_description": "Reagents"}]
+    out = extract_json({"d": rows}, "https://x.test/", {"bid_description": "title", "id": "ref"},
+                       "https://x.test/{nosuchfield}")
+    assert len(out) == 1 and out[0]["title"] == "Reagents"

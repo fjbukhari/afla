@@ -96,6 +96,12 @@ sources:
     region: Sindh
     group: Pakistan
     url: https://ppms.pprasindh.gov.pk/
+    # Confirmed from the office PC, Oct 2026: this site answers ERR_CERT_AUTHORITY_INVALID - its
+    # HTTPS certificate does not check out, so the browser refuses to open it at all. It is read
+    # in a separate browser that does not carry your sign-ins; nothing of yours goes over a
+    # connection that cannot be proven to be with the real portal. These are public notices, so
+    # there is nothing to sign in with here anyway.
+    insecure: true
 
   - id: gbppra
     name: GB PPRA Gilgit-Baltistan
