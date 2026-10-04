@@ -35,10 +35,54 @@ def cmd_test(a):
               f"published={r.get('published')}\n      url={r.get('url', '')[:100]}")
 
 
+def cmd_probe(a):
+    """Open any address and say what a run would find there, saving nothing.
+
+    Four portals answered from an address that is no longer their tender list: ADB and UHS
+    answer 404, the Indus Hospital address serves its vacancies page. The correct addresses
+    cannot be guessed from outside Pakistan - the sites refuse connections from anywhere else -
+    so this exists to check one in a single line from the PC that can actually see them:
+        tw probe https://uhs.edu.pk/the-page-you-see-in-your-browser
+    It prints what it found and the two lines to paste into config/sources.yaml.
+    """
+    from .browser import Browser, fetch_source
+    from .score import Scorer
+    from .settings import load_settings
+    src = {"id": "probe", "name": a.url, "url": a.url, "max_pages": 1,
+           "strategy": a.strategy, "insecure": a.insecure}
+    if a.login:
+        src.update(login=True, login_url=a.url)
+    br = Browser(load_settings(), headless=not a.show)
+    try:
+        status, recs, err = fetch_source(br, src, print)
+    finally:
+        br.close()
+    print(f"\n{a.url}\n  result: {status}   tenders found: {len(recs)}")
+    if err:
+        print(f"  {err}")
+    if not recs:
+        print("\nNothing was recognised as a tender list here. The page it read is saved in\n"
+              "data/captures - send that file to whoever maintains this tool, or try the address\n"
+              "of the list itself rather than the portal's front page.")
+        return
+    sc = Scorer()
+    for r in recs[: a.n]:
+        s = sc.score(r["title"], r.get("org", ""), r.get("type", ""))
+        print(f"  [{'relevant' if s['relevant'] else '        '}] {r['title'][:88]}")
+        print(f"      buyer={r.get('org', '')[:46]!r} closing={r.get('closing')}")
+    rel = sum(1 for r in recs if sc.score(r["title"], r.get("org", ""), r.get("type", ""))["relevant"])
+    print(f"\n{len(recs)} tenders, {rel} of them relevant to us. This address works. Put it in\n"
+          f"config/sources.yaml under the portal it belongs to:\n\n    url: {a.url}")
+    if a.strategy != "auto":
+        print(f"    strategy: {a.strategy}")
+    print("\nand remove the  enabled: false  line under it if there is one.")
+
+
 def cmd_login(a):
     """Open a visible browser at the portal so you can sign in yourself (handles CAPTCHA / OTP)."""
     from . import secrets
-    from .browser import Browser, capture, fill_login, goto, is_logged_in, looks_down, signed_in_signals
+    from .browser import (Browser, capture, fill_login, goto, is_logged_in, looks_blocked,
+                          looks_down, signed_in_signals)
     from .settings import load_settings, load_sources
     src = load_sources([a.source])[0]
     br = Browser(load_settings(), headless=False)
@@ -66,6 +110,17 @@ def cmd_login(a):
         if ok:
             found = sig["configured_hit"] or sig["text_hit"] or sig["href_hit"]
             print(f"Signed in: OK.  (saw {found!r} on {sig['url']})")
+        elif looks_blocked(page):
+            # A firewall in front of the portal is refusing this PC, so there is no sign-in
+            # page to sign in to. Say so plainly rather than blaming the password.
+            print(f"\n{src['name']} is being refused by a firewall, not by the portal's sign-in:")
+            print(f"  {looks_blocked(page)}")
+            print(f"  page: {sig['url']}")
+            cap = capture(page, src["id"] + "-blocked")
+            if cap:
+                print(f"  saved: {cap}")
+            print("\nYour session is kept. Open the same address in your normal browser on this PC:\n"
+                  "if it opens there, send the saved page to whoever maintains this tool.")
         elif looks_down(page):
             # The portal is answering with its own failure page, so there is nothing to sign in
             # to. Saying "still looks signed out" here would send you to re-enter a password
@@ -200,6 +255,16 @@ def main(argv=None):
         s = sub.add_parser(name, help=h)
         s.add_argument("source")
         s.set_defaults(f=fn)
+    s = sub.add_parser("probe", help="check what an address would give, without changing anything")
+    s.add_argument("url")
+    s.add_argument("--strategy", default="auto", choices=["auto", "table", "links", "json"],
+                   help="how to read the page (default: work it out)")
+    s.add_argument("--login", action="store_true", help="use your saved sign-in for this site")
+    s.add_argument("--insecure", action="store_true",
+                   help="allow a site whose HTTPS certificate does not check out")
+    s.add_argument("--show", action="store_true", help="show the browser window")
+    s.add_argument("-n", type=int, default=10)
+    s.set_defaults(f=cmd_probe)
     s = sub.add_parser("serve", help="open the dashboard at http://localhost:8766")
     s.add_argument("--port", type=int)
     s.add_argument("--lan", action="store_true", help="also allow colleagues on the office network")

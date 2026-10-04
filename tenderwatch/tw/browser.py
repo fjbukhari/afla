@@ -27,7 +27,17 @@ class Browser:
         self.pw = sync_playwright().start()
         kw = dict(headless=settings["headless"] if headless is None else headless,
                   viewport={"width": 1366, "height": 900}, accept_downloads=False,
-                  locale="en-GB", timezone_id="Asia/Karachi")
+                  locale="en-GB", timezone_id="Asia/Karachi",
+                  # Chromium otherwise advertises that it is being driven by a program, which is
+                  # what the EPADS firewall appears to act on (see _fix_headless_fingerprint).
+                  args=["--disable-blink-features=AutomationControlled"],
+                  # The Punjab eP portal will not let anyone sign in without the browser's
+                  # location ("Location access is mandatory for security and audit purposes"),
+                  # and a browser with nobody at it has nothing to grant. Offer Lahore, which is
+                  # where the portal expects its suppliers to be; no portal is told anything it
+                  # would not learn from an ordinary visit.
+                  permissions=["geolocation"],
+                  geolocation={"latitude": 31.5204, "longitude": 74.3587, "accuracy": 120})
         if settings.get("browser_executable"):
             kw["executable_path"] = settings["browser_executable"]
         elif settings.get("browser_channel"):
@@ -49,11 +59,47 @@ class Browser:
             self.pw.stop()
             raise
         self.ctx.set_default_timeout(settings["page_timeout_seconds"] * 1000)
+        self._fix_headless_fingerprint()
         if STATE_FILE.exists():
             try:
                 self.ctx.add_cookies(json.loads(STATE_FILE.read_text())["cookies"])
             except Exception:
                 pass
+
+    def _fix_headless_fingerprint(self):
+        """Ask the portals with the same User-Agent as an ordinary browser window.
+
+        When it runs without a visible window, Chromium puts "HeadlessChrome" in the
+        User-Agent it sends with every request. On the office PC's first real run, all five
+        EPADS portals answered with a firewall page - "Web Page Blocked! ... Attack ID:
+        20000051" - while signing in to the very same address by hand, from the same PC and
+        the same IP address, worked. The request headers are the difference, so send the
+        headers the operator's own browser sends: the same browser, the same version, just
+        without announcing that nobody is watching it.
+
+        This only affects how we identify ourselves on portals the operator is registered
+        with; it does not bypass any sign-in.
+        """
+        try:
+            page = self.ctx.new_page()
+            try:
+                ua = page.evaluate("navigator.userAgent")
+            finally:
+                page.close()
+        except Exception:
+            return
+        if not ua or "Headless" not in ua:
+            self.user_agent = ua or ""
+            return
+        ua = ua.replace("HeadlessChrome", "Chrome").replace("Headless", "")
+        self.user_agent = ua
+        try:
+            self.ctx.set_extra_http_headers({
+                "User-Agent": ua,
+                "Accept-Language": "en-GB,en;q=0.9",
+            })
+        except Exception:
+            pass
 
     def save_cookies(self):
         try:
@@ -190,6 +236,43 @@ def looks_down(page):
     return ""
 
 
+# Firewall / WAF block pages. Seen on all five EPADS portals from the office PC:
+# "Web Page Blocked! ... URL: vendors.epads.gov.pk/dashboard  Client IP: ...  Attack ID: 20000051".
+# Reporting that as "no tender list was recognised" sends the operator looking for a layout
+# change, and reporting it as "signed out" sends them to re-enter a password. It is neither.
+# An unmistakable firewall page: these phrases do not occur in tender lists.
+_BLOCK_STRONG = (
+    "web page blocked", "request blocked", "you have been blocked",
+    "the url you requested has been blocked", "403 forbidden",
+    "attention required! | cloudflare",
+)
+# These DO occur in tender lists - "Access control and security policy audit for the blood
+# bank" is the sort of thing being tendered, and an expired sign-in also says "Access Denied".
+# So they only count alongside a reference that only a firewall prints.
+_BLOCK_WEAK = ("access denied", "blocked", "forbidden", "security policy", "not authorized")
+_BLOCK_MARKER = re.compile(
+    r"client ip|attack id|ray id|reference ?#|incident id|error code \d|support id", re.I)
+# A firewall page is short; a long page is the portal's own content.
+_BLOCK_MAX_CHARS = 1200
+
+
+def looks_blocked(page):
+    """A short reason if a firewall is refusing us rather than the portal failing, else ''.
+
+    The reason keeps the firewall's own URL, client IP and attack/reference number, because
+    those are exactly what the portal's administrator needs if it has to be reported.
+    """
+    text = " ".join(body_text(page).split())
+    if not text or len(text) > _BLOCK_MAX_CHARS:
+        return ""
+    low = text.lower()
+    if any(p in low for p in _BLOCK_STRONG):
+        return text[:400]
+    if any(p in low for p in _BLOCK_WEAK) and _BLOCK_MARKER.search(low):
+        return text[:400]
+    return ""
+
+
 def is_logged_in(page, src):
     """True / False / None, where None honestly means "cannot tell from this page"."""
     sig = signed_in_signals(page, src)
@@ -255,6 +338,10 @@ def run_actions(page, actions):
                 page.locator(a["fill"]).first.fill(str(a["value"]))
             elif "press" in a:
                 page.keyboard.press(a["press"])
+            elif "wait_for" in a:
+                # A portal that builds its list with JavaScript (BPPRA) is still showing
+                # "loading" when the page is otherwise finished, so wait for the list itself.
+                page.wait_for_selector(a["wait_for"], timeout=int(a.get("timeout", 15)) * 1000)
             elif "wait" in a:
                 page.wait_for_timeout(int(a["wait"] * 1000))
             settle(page)
@@ -304,12 +391,19 @@ def collect(page, responses, src):
     strategy = src.get("strategy", "auto")
     if strategy == "links":
         return extract_links(page.content(), page.url, src.get("link_pattern"))
-    table = extract_tables(page.content(), page.url, fields) if strategy in ("auto", "table") else []
+    html = page.content()
+    table = extract_tables(html, page.url, fields) if strategy in ("auto", "table") else []
     js = []
     if strategy in ("auto", "json"):
         for url, obj in _json_bodies(responses):
             js.extend(extract_json(obj, page.url, fields, src.get("detail_url")))
-    return table if len(table) >= len(js) else js
+    best = table if len(table) >= len(js) else js
+    if best or strategy != "auto":
+        return best
+    # Many institution pages are not a table at all - they are a list of links to notices, which
+    # is how the KP health department and UNDP publish theirs. "auto" never tried that, so both
+    # were reported as "no tender list was recognised" while their tenders were in plain sight.
+    return extract_links(html, page.url, src.get("link_pattern"))
 
 
 def _key(r):
@@ -339,6 +433,15 @@ def fetch_generic(page, src, st, log):
         time.sleep(st["page_delay_seconds"])
         if not click_next(page, src):
             break
+    # Some pages are an archive rather than a list of what is open: the KP health department's
+    # tenders page carries every notice back to 2019, none of them with a closing date, so all
+    # of them would be treated as current for as long as the page keeps listing them - and the
+    # first run would email a few hundred of them. Those pages are newest-first, so a portal can
+    # say how far down to read. Without max_items nothing is dropped.
+    limit = src.get("max_items")
+    if limit and len(out) > int(limit):
+        log(f"  keeping the {int(limit)} newest of {len(out)} (max_items)")
+        out = out[: int(limit)]
     return "ok", out
 
 
@@ -457,6 +560,14 @@ def fetch_source(browser, src, log):
         status, recs = ADAPTERS[src.get("adapter", "generic")](page, src, browser.st, log)
         if status == "ok" and not recs:
             capture(page, src["id"])
+            blocked = looks_blocked(page)
+            if blocked:
+                return "error", [], (
+                    "The portal's firewall refused us, so no tender list was ever sent: "
+                    + blocked
+                    + "  This is not a sign-in problem and not a layout change. Open the same "
+                      "address in your normal browser on this PC: if it works there, send the "
+                      "saved page in data/captures to whoever maintains this tool.")
             down = looks_down(page)
             if down:
                 return "error", [], "The portal is not responding properly: " + down + " Nothing to do but try later."

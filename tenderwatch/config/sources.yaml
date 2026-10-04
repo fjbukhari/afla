@@ -66,6 +66,14 @@ sources:
     region: Punjab
     group: Pakistan
     url: https://ep.punjab.gov.pk/
+    # Confirmed from the captured page, Oct 2026: this address is a sign-in form with a CAPTCHA,
+    # and it also demands the browser's location ("Location access is mandatory for security and
+    # audit purposes") - without it the Sign In button refuses. The browser now offers a location
+    # (see Browser.__init__), but the CAPTCHA means the session has to be started by hand:
+    #     tw login ep-punjab
+    login: true
+    login_url: https://ep.punjab.gov.pk/
+    logged_in_check: "Log ?out|Sign ?out|My (Bids|Profile|Dashboard|Tenders)"
 
   - id: kppra
     name: KPPRA Khyber Pakhtunkhwa
@@ -78,18 +86,34 @@ sources:
     region: KP
     group: Pakistan
     url: https://www.healthkp.gov.pk/news/tenders
+    # Confirmed from the captured page, Oct 2026: this page is right, but it is not a table -
+    # it is a list of links, which is now read as well (416 notices were in the captured page).
+    # It is the department's whole archive back to 2019 and the notices carry no closing date,
+    # so only the newest are taken; the rest would otherwise count as open for ever.
+    strategy: links
+    max_items: 40
 
   - id: bppra
     name: BPPRA Balochistan (e-procurement)
     region: Balochistan
     group: Pakistan
-    url: https://www.bppra.gob.pk/
+    # Confirmed from the captured page, Oct 2026: the front page is built by JavaScript and was
+    # still showing "loading" when it was read, so there was nothing to find. Its own tender
+    # route is /Tenders, and it is now given time to finish building the list.
+    url: https://www.bppra.gob.pk/Tenders
+    before:
+      - wait_for: "table tr, [class*=tender] a"
+      - wait: 3
 
   - id: bppra-old
     name: BPPRA Balochistan (tender search, older site)
     region: Balochistan
     group: Pakistan
     url: https://bppthree.vdc.services/tenderssearch/
+    # Confirmed from the captured page, Oct 2026: this host no longer answers at all
+    # (ERR_CONNECTION_TIMED_OUT). Balochistan tenders come from the bppra entry above, so this
+    # one is switched off rather than failing on every run. Set enabled: true to try it again.
+    enabled: false
 
   - id: sppra-ppms
     name: SPPRA Sindh (PPMS notices)
@@ -170,8 +194,12 @@ sources:
     name: University of Health Sciences Lahore
     region: Punjab
     group: Pakistan institutions
+    # Confirmed from the captured page, Oct 2026: this address answers 404 (nginx). As with
+    # ADB, the correct one could not be checked from here. On the office PC:
+    #     tw probe https://uhs.edu.pk/...the tenders page you see in your browser...
     url: https://uhs.edu.pk/uhsnew/tenders.php
     strategy: links
+    enabled: false
 
   - id: pu
     name: University of the Punjab
@@ -215,8 +243,13 @@ sources:
     name: Indus Hospital & Health Network
     region: Sindh
     group: Pakistan institutions
+    # Confirmed from the captured page, Oct 2026: this address serves the "Current Vacancies"
+    # page - jobs, not tenders - although the same application does hold tender records
+    # (its page refers to Tender_Id and Tender_Name). The tender page's own address could not be
+    # checked from here. On the office PC:  tw probe <the tender list you see in your browser>
     url: https://tender.tih.org.pk/
     strategy: auto
+    enabled: false
 
   # ------------------------------------------------------------------ International / UN
   - id: ungm
@@ -260,8 +293,14 @@ sources:
     name: Asian Development Bank tenders (Pakistan)
     region: International
     group: International
+    # Confirmed from the captured page, Oct 2026: this address answers 404. The right one
+    # could not be established from here, because ADB's site cannot be reached from the machine
+    # this was fixed on. On the office PC, find the Pakistan tender list in your browser and
+    # check the address with:   tw probe <address>
+    # then put it here. Switched off until then so it does not fail on every run.
     url: https://www.adb.org/projects/tenders/country/pakistan
     max_pages: 5
+    enabled: false
 
   - id: great-gov-uk
     name: UK Export Opportunities (mirrors Pakistani hospital tenders)
@@ -269,6 +308,11 @@ sources:
     group: International
     url: https://www.great.gov.uk/export-opportunities/opportunities?s=pakistan
     max_pages: 5
+    # Confirmed from the captured page, Oct 2026: this address no longer serves export
+    # opportunities - it lands on "Invest in the UK - Business.gov.uk", with no tender links at
+    # all. The service appears to have been withdrawn, so it is switched off rather than
+    # reporting a failure every run.
+    enabled: false
 
   - id: isdb
     name: Islamic Development Bank project procurement
@@ -283,7 +327,14 @@ sources:
     region: International
     group: International
     url: https://esourcing.unops.org/#/Subscription/TenderList
-    login: false
+    # Confirmed from the captured page, Oct 2026: it answered with its sign-in page - "you must
+    # have created a UNGM account before accessing UNOPS eSourcing. Login with your UNGM
+    # account". It was marked as needing no sign-in, so it was read while signed out and of
+    # course showed no tenders. Use your UNGM username and password:
+    #     tw set-login unops
+    login: true
+    login_url: https://esourcing.unops.org/
+    logged_in_check: "Log ?out|Sign ?out|My (Tenders|Profile|Subscriptions)"
     max_pages: 5
 
   # ------------------------------------------------------------------ Template for your other sign-in portals

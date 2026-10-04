@@ -5,7 +5,8 @@ the column headers (or JSON keys) and map them to our fields by meaning.
 A source can still pin a header/key to a field with `fields:` in sources.yaml.
 """
 import re
-from urllib.parse import urljoin
+import statistics
+from urllib.parse import parse_qsl, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
@@ -95,6 +96,76 @@ def _is_doc(u):
     return bool(re.search(r"\.(pdf|docx?|xlsx?|zip|rar)(\?|$)|download|attachment|getfile|viewfile", u, re.I))
 
 
+_TITLE_RX = next(rx for f, rx in _RULES if f == "title")
+
+# "OUTSOURCING OF SOLID WASTE MANAGEMENT ... ( View Tender Detail )" - Punjab PPRA puts the
+# link label inside the title cell, so it would be stored as part of every tender's name.
+_NAV_TEXT = re.compile(r"^\(?\s*(view|see|open|read|click|more)\b.{0,40}$", re.I)
+
+
+def _cell_text(cell):
+    """The cell's text, without link labels that are navigation rather than content."""
+    drop = {id(a) for a in cell.find_all("a") if _NAV_TEXT.match(a.get_text(" ", strip=True))}
+    if not drop:
+        return cell.get_text(" ", strip=True)
+    parts = [str(s) for s in cell.descendants
+             if isinstance(s, str) and not any(id(p) in drop for p in s.parents)]
+    txt = re.sub(r"\(\s*\)", " ", " ".join(parts))
+    return re.sub(r"\s+", " ", txt).strip()
+
+
+def _title_alternatives(headers, mapping):
+    """Every column whose header also means "title" and that holds no other field."""
+    out = []
+    for i, h in enumerate(headers):
+        w = _words(h)
+        if not w or mapping.get(i) not in (None, "title"):
+            continue
+        if _TITLE_RX.search(w):
+            out.append(i)
+    return out
+
+
+def _col_profile(rows, i):
+    """(median length, share of distinct values) of one column's non-empty cells."""
+    vals = [_cell_text(c[i]) for c in rows if len(c) > i]
+    ne = [v for v in vals if v]
+    if not ne:
+        return 0.0, 0.0
+    return float(statistics.median(len(v) for v in ne)), len(set(ne)) / len(ne)
+
+
+def _refine_title(mapping, headers, rows, overrides=None):
+    """Pick the right column when several headers mean "title".
+
+    The first matching header wins, which is wrong on Punjab PPRA: its "Procurement Title"
+    column holds the stage of the notice ("Tender", "Addendum" - six values over a hundred
+    rows) while "Procurement Name" holds the actual subject. This only steps in when the
+    chosen column reads like a repeated label rather than a tender name, and never overrides
+    a column pinned with `fields:` in sources.yaml.
+    """
+    if "title" in (overrides or {}).values():
+        return mapping
+    cur = next((i for i, f in mapping.items() if f == "title"), None)
+    if cur is None or not rows:
+        return mapping
+    cur_len, cur_var = _col_profile(rows, cur)
+    if cur_len >= 25 and cur_var >= 0.3:
+        return mapping
+    best, best_len = cur, cur_len
+    for i in _title_alternatives(headers, mapping):
+        if i == cur:
+            continue
+        ln, var = _col_profile(rows, i)
+        if ln >= max(25.0, best_len * 2) and var >= 0.3:
+            best, best_len = i, ln
+    if best == cur:
+        return mapping
+    mapping = {k: v for k, v in mapping.items() if k != cur}
+    mapping[best] = "title"
+    return mapping
+
+
 def _row_to_rec(cells, mapping, base_url):
     rec = {}
     links = []
@@ -108,7 +179,7 @@ def _row_to_rec(cells, mapping, base_url):
             if cl:
                 rec[f] = cl[0]
             continue
-        rec[f] = cell.get_text(" ", strip=True)
+        rec[f] = _cell_text(cell)
         if f == "title" and cl and not _is_doc(cl[0]):
             rec.setdefault("url", cl[0])
     if not rec.get("doc_url"):
@@ -136,7 +207,7 @@ def extract_tables(html, base_url="", overrides=None):
     best, best_q = [], 0
     for grid in _tables(soup) + _div_grids(soup):
         headers, rows = grid
-        mapping = map_headers(headers, overrides)
+        mapping = _refine_title(map_headers(headers, overrides), headers, rows, overrides)
         recs = [r for r in (_finish(_row_to_rec(c, mapping, base_url), base_url) for c in rows) if r]
         q = _grid_quality(mapping, len(recs))
         if q > best_q:
@@ -144,28 +215,46 @@ def extract_tables(html, base_url="", overrides=None):
     return best
 
 
+def _own_rows(table):
+    """The rows of this table, not those of a table nested inside it."""
+    return [tr for tr in table.find_all("tr") if tr.find_parent("table") is table]
+
+
+def _header_row(table, trs):
+    """The row carrying the column names.
+
+    A Telerik RadGrid - Punjab PPRA - puts two rows in its <thead>: the column names, then
+    an empty filter row. Taking the last row of the <thead> read nine blank headers, so
+    nothing could be mapped and the whole portal looked unrecognised. Take the row that
+    actually names the most columns instead.
+    """
+    thead = table.find("thead")
+    cands = []
+    if thead:
+        cands = [tr for tr in thead.find_all("tr") if tr.find_parent("table") is table]
+    if not cands:
+        cands = [tr for tr in trs[:3] if tr.find("th")]
+    if not cands:
+        return trs[0]
+    return max(cands, key=lambda tr: sum(
+        1 for c in tr.find_all(["th", "td"]) if c.get_text(strip=True)))
+
+
 def _tables(soup):
     out = []
     for t in soup.find_all("table"):
-        if t.find("table"):  # layout table wrapping the real one
-            continue
-        trs = t.find_all("tr")
+        # A table containing another table used to be skipped as a layout wrapper. That also
+        # skipped every data grid with a pager or toolbar table inside it, which is how
+        # Punjab PPRA's hundred tenders were missed. Judge a table by its OWN rows instead:
+        # a layout wrapper has none, a data grid has all of them.
+        trs = _own_rows(t)
         if len(trs) < 2:
             continue
-        head = None
-        thead = t.find("thead")
-        if thead and thead.find("tr"):
-            head = thead.find_all("tr")[-1]
-        else:
-            for tr in trs[:3]:
-                if tr.find("th"):
-                    head = tr
-        if head is None:
-            head = trs[0]
+        head = _header_row(t, trs)
         headers = [c.get_text(" ", strip=True) for c in head.find_all(["th", "td"])]
         rows = []
         for tr in trs:
-            if tr is head or (thead and tr.find_parent("thead") is thead):
+            if tr is head or tr.find_parent("thead") is not None:
                 continue
             cells = tr.find_all(["td", "th"], recursive=False)
             if len(cells) >= max(2, len(headers) - 2):
@@ -278,6 +367,56 @@ _TENDERISH = re.compile(r"tender|\bNIT\b|\bIFB\b|\bbid|quotation|\bRFQ\b|\bRFP\b
 _DATE_IN_TEXT = re.compile(r"\b(\d{1,2}[-/. ](?:\d{1,2}|[A-Za-z]{3,9})[-/. ,]*\d{2,4}|\d{4}-\d{2}-\d{2})\b")
 
 
+# Link labels that are not the name of anything: on the KP health department's tenders page
+# every notice is followed by "Attachment : Download", and the page links to itself as "TENDERS".
+# These became records with those as their titles.
+_LABEL_ONLY = re.compile(
+    r"^(all |view |see |open )?(tenders?|notices?|notifications?|procurements?|downloads?|"
+    r"attachments?|archives?|bids?|documents?|advertisements?|more|details?|read more|"
+    r"attachment\s*[:\-]\s*download|download\s*(file|pdf|now)?|click here|pdf)\W*$", re.I)
+# UNDP's listing repeats its field labels inside the row - "Title <subject> Ref No <ref>
+# UNDP Office/Country ..." - so the label and the reference are lifted out of the title.
+_LEADING_LABEL = re.compile(r"^(title|subject|tender title|description)\s*[:\-]?\s+", re.I)
+_REF_IN_LINE = re.compile(r"\bref(?:erence)?\.?\s*(?:no\.?|number|#)?\s*[:\-]?\s*"
+                          r"([A-Z0-9][A-Z0-9/\-_.]{3,40})", re.I)
+
+
+def _tidy_link_title(title):
+    """Strip the field labels a listing repeats inside each row; return (title, ref)."""
+    title = _LEADING_LABEL.sub("", title).strip()
+    ref = ""
+    m = _REF_IN_LINE.search(title)
+    if m:
+        ref = m.group(1).strip(" .,;")
+        title = (title[:m.start()] + " " + title[m.end():]).strip()
+    return re.sub(r"\s+", " ", title).strip(" :-|,"), ref
+
+
+def _url_shape(u):
+    """A link's shape, so that links belonging to one list can be told from stray ones:
+    /news/view/1257 and /news/view/1255 share a shape, a Google Maps link does not."""
+    p = urlsplit(u)
+    path = re.sub(r"\d+", "#", p.path)
+    path = re.sub(r"/[^/]{24,}$", "/*", path)          # a long filename or slug
+    return p.netloc, path, ",".join(sorted(k for k, _ in parse_qsl(p.query)))
+
+
+def _only_real_lists(recs):
+    """Keep links that belong to a list of notices, drop the one-offs.
+
+    Falling back to reading a page's links finds tenders on the institution pages, but on a
+    portal's front page it also "found" the office address (because its line mentioned
+    tenders) and a software vendor's URL. Wording alone cannot tell those apart. Belonging to
+    a list can: a tender list has many links of the same shape, a stray link has none. A link
+    straight to a PDF or Word notice is kept either way, since small institutions publish two
+    or three of those and nothing else.
+    """
+    counts = {}
+    for r in recs:
+        counts[_url_shape(r["url"])] = counts.get(_url_shape(r["url"]), 0) + 1
+    return [r for r in recs if counts[_url_shape(r["url"])] >= 3 or _is_doc(r["url"])]
+
+
 def extract_links(html, base_url="", pattern=None):
     """Institution 'Tenders' pages are often just a list of links to PDF notices.
     Every link whose text (or its line) looks like a tender becomes a record."""
@@ -293,8 +432,11 @@ def extract_links(html, base_url="", pattern=None):
         text = _clean(a.get_text(" "))
         line_el = a.find_parent(["li", "tr", "p", "div", "article"]) or a
         line = _clean(line_el.get_text(" "))[:600]
-        title = text if len(text) >= 12 and not re.fullmatch(r"(download|view|click here|pdf|details?|read more)", text, re.I) else line
+        title = text if len(text) >= 12 and not _LABEL_ONLY.match(text) else line
         if not rx.search(title) and not rx.search(href):
+            continue
+        title, ref = _tidy_link_title(title)
+        if _LABEL_ONLY.match(title):
             continue
         url = urljoin(base_url, href)
         if url in seen:
@@ -303,10 +445,12 @@ def extract_links(html, base_url="", pattern=None):
         dates = _DATE_IN_TEXT.findall(line)
         rec = {"title": title, "url": url, "doc_url": url if _is_doc(url) else "",
                "published": dates[0] if dates else None}
+        if ref:
+            rec["ref"] = ref
         m = re.search(r"(?:last date|closing|deadline|due date|submission)[^0-9A-Za-z]{0,20}(" + _DATE_IN_TEXT.pattern + ")", line, re.I)
         if m:
             rec["closing"] = m.group(1)
         rec = _finish(rec, base_url)
         if rec:
             out.append(rec)
-    return out
+    return _only_real_lists(out)
