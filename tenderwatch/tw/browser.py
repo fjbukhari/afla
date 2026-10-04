@@ -95,11 +95,62 @@ def body_text(page):
         return ""
 
 
-def is_logged_in(page, src):
+# Signs that a portal considers us signed in, beyond whatever the portal's own entry in
+# sources.yaml asks for. These exist because every logged_in_check in sources.yaml was written
+# without access to the real portal - they block cloud servers - so each one is a guess until it
+# meets the live site. Reported from the office PC: EPADS was signed in and showing its vendor
+# dashboard, and the check still said "Still looks signed out".
+_SIGNED_IN_TEXT = r"log\s?out|sign\s?out|my (bids|profile|dashboard|account|tenders)|welcome,|signed in as"
+_SIGNED_IN_HREF = r"logout|signout|sign-out|log-out"
+
+
+def signed_in_signals(page, src):
+    """Everything observable about whether this looks like a signed-in session.
+
+    Returns a dict rather than a yes/no, so `tw login` can show the operator what it saw when it
+    cannot decide. A sign-out control is the reliable marker, and it is looked for in the page's
+    links as well as its text: on many portals it is an icon inside a collapsed account menu, so
+    it never appears in the visible text the old check read.
+    """
+    out = {"url": "", "title": "", "text_hit": "", "href_hit": "", "configured_hit": ""}
+    try:
+        out["url"] = page.url or ""
+        out["title"] = (page.title() or "")[:120]
+    except Exception:
+        pass
+    text = body_text(page)
+    # the whole document, including text inside collapsed menus that inner_text leaves out
+    try:
+        full = page.content()
+    except Exception:
+        full = text
+    m = re.search(_SIGNED_IN_TEXT, text, re.I) or re.search(_SIGNED_IN_TEXT, full, re.I)
+    if m:
+        out["text_hit"] = m.group(0)
+    try:
+        hrefs = page.eval_on_selector_all("a[href]", "a => a.map(x => x.getAttribute('href'))")
+    except Exception:
+        hrefs = []
+    for h in hrefs or []:
+        if h and re.search(_SIGNED_IN_HREF, str(h), re.I):
+            out["href_hit"] = str(h)[:120]
+            break
     chk = src.get("logged_in_check")
-    if not chk:
-        return None  # cannot tell
-    return bool(re.search(chk, body_text(page), re.I))
+    if chk:
+        m2 = re.search(chk, text, re.I) or re.search(chk, full, re.I)
+        if m2:
+            out["configured_hit"] = m2.group(0)
+    return out
+
+
+def is_logged_in(page, src):
+    """True / False / None, where None honestly means "cannot tell from this page"."""
+    sig = signed_in_signals(page, src)
+    if sig["configured_hit"] or sig["text_hit"] or sig["href_hit"]:
+        return True
+    if not src.get("logged_in_check"):
+        return None
+    return False
 
 
 def auto_login(page, src, st, log):
@@ -341,8 +392,11 @@ def fetch_source(browser, src, log):
 
 
 def capture(page, sid):
+    """Save the page as it stands, and return where it went so the operator can be told."""
     try:
         CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
-        (CAPTURE_DIR / f"{sid}.html").write_text(page.content(), encoding="utf-8")
+        path = CAPTURE_DIR / f"{sid}.html"
+        path.write_text(page.content(), encoding="utf-8")
+        return path
     except Exception:
-        pass
+        return None

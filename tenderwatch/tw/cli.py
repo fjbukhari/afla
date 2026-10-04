@@ -38,7 +38,7 @@ def cmd_test(a):
 def cmd_login(a):
     """Open a visible browser at the portal so you can sign in yourself (handles CAPTCHA / OTP)."""
     from . import secrets
-    from .browser import Browser, fill_login, goto, is_logged_in
+    from .browser import Browser, capture, fill_login, goto, is_logged_in, signed_in_signals
     from .settings import load_settings, load_sources
     src = load_sources([a.source])[0]
     br = Browser(load_settings(), headless=False)
@@ -51,10 +51,40 @@ def cmd_login(a):
             print("Your saved username/password were filled in.")
         input(f"\nSign in to {src['name']} in the browser window.\n"
               "When you can see your account (or the tender list), come back here and press Enter... ")
-        goto(page, src["url"], br.st)
+
+        # Check the page you are actually on first. Navigating back to the portal's front page
+        # before looking was its own bug: on a portal that does not bounce a signed-in user
+        # onward, that lands on the public landing page, which of course looks signed out.
         ok = is_logged_in(page, src)
-        print({True: "Signed in: OK.", False: "Still looks signed out. Check the browser, then try again.",
-               None: "Saved. (This portal has no sign-in check configured.)"}[ok])
+        sig = signed_in_signals(page, src)
+        if not ok:
+            goto(page, src["url"], br.st)
+            ok = is_logged_in(page, src)
+            if ok:
+                sig = signed_in_signals(page, src)
+
+        if ok:
+            found = sig["configured_hit"] or sig["text_hit"] or sig["href_hit"]
+            print(f"Signed in: OK.  (saw {found!r} on {sig['url']})")
+        else:
+            # Every logged_in_check in sources.yaml was written without access to the real
+            # portal, so a failed check means "this guess did not match", not "you are not
+            # signed in". You can see the browser; the program cannot. So it asks, and saves
+            # the page so the check can be corrected properly.
+            cap = capture(page, src["id"] + "-login")
+            print("\nCould not confirm the sign-in automatically.")
+            print(f"  page    : {sig['url']}")
+            print(f"  title   : {sig['title']}")
+            print(f"  looking : {src.get('logged_in_check') or '(nothing configured)'}")
+            if cap:
+                print(f"  saved   : {cap}")
+            ans = input("\nIn the browser window, does it show you signed in? [y/N] ").strip().lower()
+            if ans.startswith("y"):
+                print("Saved. Send the file above to whoever maintains this tool so the check\n"
+                      "can be corrected; until then this portal will say 'sign in' on the dashboard\n"
+                      "even though it works.")
+            else:
+                print("Not saved as signed in. Try again, or check the browser window.")
     finally:
         br.close()
 
