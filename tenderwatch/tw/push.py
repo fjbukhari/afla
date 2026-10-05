@@ -133,6 +133,7 @@ def check(log=print):
     log("  saved key     : " + ("yes" if key else "NO - run: tw set-login website-key"))
 
     python_ok = False
+    refused = False
     try:
         req = urllib.request.Request(api, method="GET")
         _headers(req, user, password, key)
@@ -144,6 +145,7 @@ def check(log=print):
         log(f"  from this program: the website answered HTTP {e.code} ({e.reason}).")
         python_ok = e.code in (401, 403)      # it answered, so the connection itself works
     except Exception as e:
+        refused = isinstance(getattr(e, "reason", None), ConnectionRefusedError) or "refused" in str(e).lower()
         log(f"  from this program: FAILED - {_why(e)}")
 
     browser_ok = None
@@ -157,6 +159,7 @@ def check(log=print):
         finally:
             br.close()
     except Exception as e:
+        refused = refused or "econnrefused" in str(e).lower() or "refused" in str(e).lower()
         log(f"  from the browser : could not try it ({type(e).__name__}: {e})"[:300])
 
     log("")
@@ -170,6 +173,19 @@ def check(log=print):
             "something is refusing the program itself - usually the website's own firewall on\n"
             "shared hosting. Ask the hosting support to allow requests from this office's address\n"
             "to /catalogue/staff/tenders/api.php, and send them the exact message printed above.")
+    elif browser_ok is None and refused:
+        # Both routes refused instantly, by different programs, at the same address. Blaming the
+        # settings file here was wrong and wasted an evening: the address was correct and the
+        # website itself was refusing connections.
+        log("Neither this program nor the browser could open a connection, and both were refused\n"
+            "straight away rather than kept waiting. That is the website refusing the connection,\n"
+            "not a mistake in the address or in your sign-in - those are never even reached.\n\n"
+            "Check it from somewhere else: open https://www.jb-scientific.com on your phone with\n"
+            "wi-fi switched OFF. If it fails there too, the website is down or its hosting has\n"
+            "stopped answering, and only the hosting company can fix it. Tell them the address\n"
+            "refuses connections on port 443 straight away, from more than one network, and give\n"
+            "them the message above. Nothing is lost meanwhile: this PC keeps collecting tenders,\n"
+            "and they will be sent once the website answers again.")
     else:
         log("This PC cannot reach the website at all, by either route. Check that\n"
             "https://www.jb-scientific.com opens in your browser on this PC, and that the address\n"

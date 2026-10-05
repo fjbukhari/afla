@@ -178,6 +178,29 @@ def test_check_says_it_reached_the_website(wired, monkeypatch):
     assert "saved sign-in : yes" in text
 
 
+def test_check_blames_the_website_not_the_settings_when_both_routes_are_refused(wired, monkeypatch):
+    """The office PC's case: the address was right, and the tool told them to check the address.
+
+    Both routes refused instantly at a correct address means the website is refusing, and that
+    is what has to be said - the settings file is never even reached.
+    """
+    import tw.browser
+
+    class Refusing(FakeBrowser):
+        def get(self, url, timeout=0):
+            raise RuntimeError("connect ECONNREFUSED 74.50.90.186:443")
+
+    monkeypatch.setattr(tw.browser, "Browser", Refusing)
+    monkeypatch.setattr(P, "load_settings",
+                        lambda: {"website": {"api_url": "http://127.0.0.1:9/api.php"}})
+    out = []
+    P.check(log=out.append)
+    text = "\n".join(out)
+    assert "That is the website refusing the connection" in text, text
+    assert "on your phone with" in text, text
+    assert "spelled exactly the same way" not in text, text
+
+
 def test_check_explains_a_refusal(wired, monkeypatch):
     import tw.browser
     monkeypatch.setattr(tw.browser, "Browser", FakeBrowser)
