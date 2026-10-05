@@ -98,6 +98,11 @@ class Browser:
                 "User-Agent": ua,
                 "Accept-Language": "en-GB,en;q=0.9",
             })
+            # The header and what the page itself can read must agree. Changing only the header
+            # leaves navigator.userAgent still saying "HeadlessChrome", and two answers that
+            # disagree are a louder signal than either one alone.
+            self.ctx.add_init_script(
+                "Object.defineProperty(navigator, 'userAgent', {get: () => %s});" % json.dumps(ua))
         except Exception:
             pass
 

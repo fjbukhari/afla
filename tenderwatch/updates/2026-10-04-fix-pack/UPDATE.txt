@@ -62,10 +62,20 @@ FOR THE FOUR SWITCHED-OFF ONES - THE ONE THING I CANNOT DO FROM HERE
    prints the line to paste into config\sources.yaml. Nothing is saved and nothing is sent.
 
    The four to check:
-       adb            Asian Development Bank, Pakistan tenders
+       adb            checked 5 Oct - see below, nothing to do
        uhs            University of Health Sciences Lahore
        indus          Indus Hospital & Health Network
        great-gov-uk   UK Export Opportunities (may simply be gone)
+
+   ADB, already checked: adb.org answers "Sorry, you have been blocked - you are unable to
+   access adb.org" to a program, with both the plain address and the Pakistan-filtered one,
+   and with a visible window too. It is Cloudflare recognising a browser being driven by a
+   program rather than anything to do with the address, and it is not something to get around.
+   ADB's Pakistan tenders still reach you: government-executed ADB contracts are advertised on
+   PPRA and EPADS, which this program reads, and ADB will e-mail you the rest if you subscribe
+   on their site (Business Opportunities -> subscribe to notices). ADB stays switched off.
+   The UHS page also carried Cloudflare's script, so it may answer the same way - worth one
+   check, and if it is blocked too, leave it off; UHS tenders appear on PPRA Punjab as well.
 
    Or just send me the addresses and I will put them in.
 

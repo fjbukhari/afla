@@ -194,9 +194,11 @@ sources:
     name: University of Health Sciences Lahore
     region: Punjab
     group: Pakistan institutions
-    # Confirmed from the captured page, Oct 2026: this address answers 404 (nginx). As with
-    # ADB, the correct one could not be checked from here. On the office PC:
+    # Confirmed from the captured page, Oct 2026: this address answers 404 (nginx), and the
+    # captured page carried Cloudflare's challenge script, so this site may refuse a program the
+    # way adb.org does. Worth one check from the office PC with the address your browser shows:
     #     tw probe https://uhs.edu.pk/...the tenders page you see in your browser...
+    # If that is blocked too, leave it off: UHS tenders also appear on PPRA Punjab.
     url: https://uhs.edu.pk/uhsnew/tenders.php
     strategy: links
     enabled: false
@@ -293,12 +295,15 @@ sources:
     name: Asian Development Bank tenders (Pakistan)
     region: International
     group: International
-    # Confirmed from the captured page, Oct 2026: this address answers 404. The right one
-    # could not be established from here, because ADB's site cannot be reached from the machine
-    # this was fixed on. On the office PC, find the Pakistan tender list in your browser and
-    # check the address with:   tw probe <address>
-    # then put it here. Switched off until then so it does not fail on every run.
-    url: https://www.adb.org/projects/tenders/country/pakistan
+    # Checked from the office PC, 5 Oct 2026, with both this address and the right one found in
+    # a browser: adb.org is behind Cloudflare's bot protection and answers "Sorry, you have been
+    # blocked - You are unable to access adb.org" to a program, even with a visible window and an
+    # ordinary browser's headers. It is the browser itself being recognised, not the address, so
+    # there is nothing to correct here and no attempt is made to get around it.
+    # ADB's Pakistan tenders reach us another way: government-executed ADB contracts are also
+    # advertised on PPRA/EPADS, which are read above, and ADB offers e-mail alerts for the rest
+    # (adb.org -> Business Opportunities -> subscribe). Left off rather than failing every run.
+    url: "https://www.adb.org/projects/tenders?searchstax[query]=*&searchstax[order]=ds_date_closing%20desc&searchstax[facets][0]=or:sm_fct_country:Pakistan"
     max_pages: 5
     enabled: false
 

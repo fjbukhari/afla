@@ -99,8 +99,15 @@ def test_the_browser_still_identifies_itself_honestly(br, site, page):
     """Nothing is invented: it is the same browser and the same version, just not headless."""
     B.goto(page, site + "/tenders", None)
     ua = SEEN_HEADERS["/tenders"].get("User-Agent", "")
-    real = page.evaluate("navigator.userAgent").replace("HeadlessChrome", "Chrome").replace("Headless", "")
-    assert ua == real
+    assert ua == br.user_agent
+    assert "Chrome/" in ua and "Headless" not in ua
+
+
+def test_the_header_and_the_page_agree(br, site, page):
+    """Two answers that disagree are a louder signal than either one alone."""
+    B.goto(page, site + "/tenders", None)
+    ua = SEEN_HEADERS["/tenders"].get("User-Agent", "")
+    assert page.evaluate("navigator.userAgent") == ua
 
 
 @pytest.mark.parametrize("path", ["/blocked", "/cloudflare"])
