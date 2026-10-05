@@ -118,6 +118,15 @@ def check(log=print):
     for var in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
         if os.environ.get(var):
             log(f"  note: {var} is set to {os.environ[var]} - the office network uses a proxy.")
+    # On Windows this reads the proxy Internet Options holds, which browsers obey and this
+    # program may not. An office network that only lets traffic out through a proxy refuses
+    # everything else, which looks exactly like the site being down.
+    try:
+        sysproxy = urllib.request.getproxies()
+    except Exception:
+        sysproxy = {}
+    log("  Windows proxy : " + (", ".join(f"{k}={v}" for k, v in sysproxy.items()) if sysproxy
+                                else "none configured"))
     user, password = secrets.get_login("website")
     _, key = secrets.get_login("website-key")
     log("  saved sign-in : " + ("yes" if user and password else "NO - run: tw set-login website"))
