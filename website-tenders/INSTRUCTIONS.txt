@@ -1,0 +1,176 @@
+JB SCIENTIFIC - TENDER PORTAL UPDATE
+====================================
+Prepared 4 Oct 2026. About 20 minutes in cPanel, or 10 if your cron jobs are already set up.
+
+This pack contains the complete tender portal as it now stands. It is safe to install whether or
+not you have already applied fix pack 2 - if you have, the tender files are simply replaced with
+the newer ones. It does NOT contain your config.php or your tender data, so your secret key,
+email settings, saved tenders and team notes are never touched.
+
+
+WHAT THIS FIXES
+  1. TEAM NOTES WERE BEING LOST.
+     Saving a status or note reads the whole notes file, changes it and writes it back. Nothing
+     stopped two saves overlapping. Tested with twelve saves sent at once: only four survived.
+     The other eight disappeared with no error shown - so on a dashboard several people use, one
+     person's update could silently undo another's. Saves now queue up properly. The same test
+     now keeps all twelve.
+
+  2. TWO DIFFERENT TENDERS COULD BE MERGED INTO ONE.
+     The duplicate check compared only the title words and the closing date. Two unrelated
+     tenders sharing a short generic title - "Supply of Medical Equipment" from Health Department
+     Punjab, and the same title from Health Department Sindh - became one entry, and one of them
+     vanished from the dashboard with nothing to show it had ever been there. The buyer is now
+     compared too. Checked against your live tender database: all 13 genuine duplicate groups
+     still merge correctly, and the invented ones no longer do.
+
+  3. LINK ADDRESSES ARE NOW CHECKED.
+     Tender web addresses come from government portals and from the office PC, and become
+     clickable links inside the signed-in staff dashboard. They were safely escaped as text but
+     never checked for what kind of address they were, so an address beginning "javascript:" that
+     reached the database by any route would have run a script in the dashboard when someone
+     clicked that tender. Anything that is not plainly http or https is now dropped, both on the
+     server and again in the page.
+
+  4. TWO CLICKS ON "CHECK PORTALS NOW" no longer start two fetches at once that overwrite each
+     other's results. The second click now says a check is already running.
+
+  5. Leading reference numbers such as "Tender No 44/2026" are stripped before titles are
+     compared, so the same tender listed with and without its number is recognised as one.
+
+  --- added 5 Oct 2026, from the pages captured on the office PC ---
+
+  6. HEALTH DEPARTMENT KP READ AS 0 TENDERS, AND IT WAS NOT THE PORTAL'S FAULT.
+     Its page puts a stylesheet inside a table row, and the reader took that row's text - a
+     block of CSS - as a tender. Because that counted as a result, the pass that reads a page's
+     links never ran, and the 400 real notices on that page were never seen. Stylesheets and
+     scripts are now removed before anything is read, and the links are read whenever the table
+     pass finds almost nothing. That page now gives 60 notices instead of one line of CSS.
+
+  7. STRAY LINKS NO LONGER BECOME TENDERS.
+     Reading a page's links had the opposite danger: on BPPRA's front page it turned the office
+     address ("House # 2 Arbab Town Joint Road") and a software vendor's web address into
+     tenders, because both sat on lines mentioning tenders. A link now counts only if it belongs
+     to a list of at least three of the same shape, or points straight at a document.
+
+  8. DEADLINES WERE BEING LOST ON UNMAPPED PORTALS.
+     In the general-purpose reader, a row with a single date always became the publication date.
+     A portal listing only a "Closing Date" therefore lost every deadline - and a tender with no
+     closing date counts as open for ever, so those entries never left the dashboard. Where a
+     table names its columns, the names are now believed. The newest 60 notices are kept from
+     pages that carry no dates at all, for the same reason.
+
+     Checked against the real captured pages: Health KP 1 junk row -> 60 notices, BPPRA 1 junk
+     row -> 0 (its list is built by JavaScript, so there is genuinely nothing in the page to
+     read), UNDP 244 -> 60 with the menu items gone, Punjab PPRA unchanged at 100.
+
+  NOT FIXED BY THIS PACK - the three portals showing "error" on your dashboard (Punjab PPRA,
+  BPPRA, SPPRA Sindh). Those are not reading failures: the Punjab reader handles its captured
+  page correctly, giving all 100 tenders. The server is failing to FETCH those sites. Click
+  "Run log" on the dashboard after the next check and send me what it says about them.
+
+  Also included, if you have not already installed fix pack 2: the new dashboard (Institute and
+  City drop-downs, item lists read from tender documents, "Match to catalogue"), the updated
+  relevance rules, and the catalogue's Open-tenders panel.
+
+
+WHAT WAS CHECKED AND FOUND CORRECT (no change needed)
+  - Relevance scoring: 8 of 8 cases, including correctly excluding construction, uniforms,
+    vehicle repair and security services at health institutions.
+  - The portal readers against empty, truncated, deeply nested and malformed pages, and against
+    pages carrying hostile links or XML tricks - 67 checks, no failures.
+  - The import from the office PC against path traversal in the source name, enormous payloads,
+    2,000 rows at once and unparseable dates.
+  - Text escaping in the dashboard: hostile titles, organisations and references were shown as
+    plain text; nothing executed and no markup was injected.
+
+
+STEP 0 - BACKUP (3 minutes, do not skip)
+  cPanel > File Manager > public_html/catalogue/staff
+  Right-click the "tenders" folder > Compress > Zip > name it tenders-backup-2026-10-04.zip
+  > Download it, then delete that zip from the server.
+
+
+STEP 1 - UPLOAD
+  File Manager > open public_html > Upload > upload-this-into-public_html.zip
+  Back in File Manager, right-click the zip > Extract > into /public_html > confirm overwriting.
+  Then delete the zip from public_html.
+  The zip mirrors the server's folder structure, so the files land in the right places by
+  themselves. Your config.php and your data folder are not in the zip and stay as they are.
+
+
+STEP 2 - CHECK THE DAILY JOBS ARE SET UP
+  Skip this step if you already did it for fix pack 2.
+
+  a) File Manager > public_html/catalogue/staff/tenders/config.php > Edit. Set
+       'dashboard_url' => 'https://www.jb-scientific.com/catalogue/staff/tenders/tenders.html',
+     Leave secret_key and the email settings alone. Save.
+
+  b) cPanel > Cron Jobs. Remove any old Tender Watch line pointing at a different folder, then
+     add these two (replace CPANELUSER with your cPanel username, shown at the top right in
+     cPanel):
+
+       Minute 45   Hour 3   (every day)
+       /usr/local/bin/php /home/CPANELUSER/public_html/catalogue/staff/tenders/run.php daily >/dev/null 2>&1
+
+       Minute 45   Hour 9   (every day)
+       /usr/local/bin/php /home/CPANELUSER/public_html/catalogue/staff/tenders/run.php fetch >/dev/null 2>&1
+
+     If the server clock is UTC, 03:45 is 08:45 in Pakistan. The first line fetches everything and
+     sends the daily email; the second is an afternoon refresh.
+
+  c) Re-score the stored tenders once against the current rules. In cPanel > Terminal:
+       php ~/public_html/catalogue/staff/tenders/run.php rescore
+     If you have no Terminal, add a third cron job set a few minutes ahead with
+       /usr/local/bin/php /home/CPANELUSER/public_html/catalogue/staff/tenders/run.php rescore >/dev/null 2>&1
+     and delete it once it has run.
+
+
+STEP 3 - CONNECT TENDER WATCH 2 ON THE OFFICE PC
+  Skip if already done. In a Command Prompt in the Tender Watch folder:
+       tw set-login website        the staff-area username and password
+       tw set-login website-key    any name, then the secret_key from config.php as the password
+  In config\settings.yaml add:
+       website:
+         api_url: https://www.jb-scientific.com/catalogue/staff/tenders/api.php
+  Then run:  tw push
+  It should print "Sent N tenders from M portals to the website".
+  Note the dashboard on the PC is now at http://localhost:8766 (it moved from 8765, which the
+  lab microbial pipeline also uses).
+
+
+STEP 4 - TEST (10 minutes)
+  [ ] Open https://www.jb-scientific.com/catalogue/staff/tenders/ - the dashboard lists tenders.
+
+  [ ] Set a status on a tender, reload the page, and confirm it is still there.
+
+  [ ] Ask a colleague to open the dashboard at the same time and each set a status on a
+      different tender. Reload: BOTH should still be set. (Before this update one of them could
+      quietly disappear.)
+
+  [ ] Click a tender title - it opens the portal page in a new tab.
+
+  [ ] Click "Check portals now", then click it again straight away. The second click should say
+      a check is already running, not start a second one.
+
+  [ ] Institute and City drop-downs filter the list.
+
+  [ ] A tender with an item list shows "Match to catalogue"; clicking it opens the catalogue's
+      Match tab with those items matched against your products.
+
+  [ ] In a private window as a customer, open the catalogue: there must be no tender panel and
+      no prices on the Takara tab.
+
+
+A NOTE ON DUPLICATES
+  The duplicate rule is now deliberately cautious. Where one portal names the ministry and
+  another names the executing hospital, the same tender may occasionally appear twice. That is
+  the safer direction: a duplicate on screen costs nothing, while a tender merged away by mistake
+  costs a bid and gives no sign it ever existed. If you see a pair you are sure is the same
+  tender, the reference numbers usually confirm it.
+
+
+IF SOMETHING GOES WRONG
+  Upload tenders-backup-2026-10-04.zip from Step 0 and extract it into
+  public_html/catalogue/staff (overwrite). That restores the previous tender portal exactly,
+  including your config and data. Nothing else on the website is affected by this update.
