@@ -13,6 +13,7 @@ WHAT TO DO (two minutes)
        tw\extract.py
        tw\browser.py
        tw\cli.py
+       tw\settings.py
        config\sources.yaml
 
    Keep the folders: tw\ files go in the tw folder, config\ files in the config folder.
@@ -85,3 +86,10 @@ FOR THE FOUR SWITCHED-OFF ONES - THE ONE THING I CANNOT DO FROM HERE
 IF SOMETHING LOOKS WRONG
    The page each portal actually sent is saved in data\captures\. Zip that folder and send
    it, as you did before - it is what made this update possible.
+
+
+ONE MORE THING ADDED 5 OCTOBER
+   A single stray character in config\settings.yaml - the dash that came along when you pasted
+   the website lines - stopped the program with twenty-five lines of Python. That was the
+   program's fault, not yours. It now says which file, which line, what is on that line and
+   what to do, in plain words. The same applies to config\sources.yaml.
