@@ -121,6 +121,17 @@ def test_nothing_sent_is_said_once_and_clearly(wired):
     assert "Sent 0 tenders from" not in text      # the old contradictory summary
 
 
+def test_nothing_listening_points_at_the_address(wired, monkeypatch):
+    """WinError 10061: the office PC dialled an address where nothing answered."""
+    monkeypatch.setattr(P, "load_settings",
+                        lambda: {"website": {"api_url": "http://127.0.0.1:9/api.php"}})
+    out = []
+    P.push(log=out.append)
+    text = "\n".join(out)
+    assert "nothing is listening at that address" in text, text
+    assert "settings.yaml" in text and ":8766" in text, text
+
+
 def test_a_refused_sign_in_says_so(wired):
     sent, text = run("401")
     assert sent == 0

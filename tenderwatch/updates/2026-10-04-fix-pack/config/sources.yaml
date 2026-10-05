@@ -241,6 +241,8 @@ sources:
     url: https://skmold.shaukatkhanum.org.pk/notices/
     strategy: links
 
+    # Switched off 5 Oct 2026 at your request: not a buyer we sell to.
+    enabled: false
   - id: indus
     name: Indus Hospital & Health Network
     region: Sindh

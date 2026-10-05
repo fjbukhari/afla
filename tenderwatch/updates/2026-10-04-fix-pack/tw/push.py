@@ -71,6 +71,13 @@ def _why(e):
                 "inspecting traffic, or a missing certificate update on this PC.")
     if isinstance(inner, ssl.SSLError):
         return "the secure connection failed (" + text + ")"
+    if isinstance(inner, ConnectionRefusedError) or "refused it" in text or "refused" in text.lower():
+        return ("nothing is listening at that address (" + text + "). This is not the website "
+                "turning us away - the connection never got that far. The address in "
+                "config/settings.yaml is almost always the cause: it must be the website's own "
+                "address,\n      https://www.jb-scientific.com/catalogue/staff/tenders/api.php\n"
+                "    not localhost, not 127.0.0.1, and with no port number such as :8766 (that is "
+                "this PC's own dashboard, not the website).")
     if isinstance(inner, socket.gaierror):
         return ("the website's name could not be looked up (" + text + "). Check the address in "
                 "config/settings.yaml - and that it is reachable from this PC.")
@@ -101,7 +108,13 @@ def check(log=print):
             "    website:\n"
             "      api_url: https://www.jb-scientific.com/catalogue/staff/tenders/api.php")
         return 1
+    from urllib.parse import urlsplit
+    u = urlsplit(api)
     log(f"Website address: {api}")
+    log(f"  it will contact: host {u.hostname or '(none)'}, port {u.port or (443 if u.scheme == 'https' else 80)}, "
+        f"over {u.scheme or '(no scheme)'}")
+    if u.hostname in ("localhost", "127.0.0.1", "::1"):
+        log("  THIS IS THIS PC, not the website. The address must be the website's own address.")
     for var in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
         if os.environ.get(var):
             log(f"  note: {var} is set to {os.environ[var]} - the office network uses a proxy.")
