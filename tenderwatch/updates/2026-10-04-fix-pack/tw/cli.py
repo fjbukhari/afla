@@ -185,7 +185,9 @@ def cmd_digest(a):
 
 
 def cmd_push(a):
-    from .push import push
+    from .push import check, push
+    if getattr(a, "check", False):
+        raise SystemExit(check())
     push()
 
 
@@ -277,7 +279,10 @@ def main(argv=None):
     s = sub.add_parser("digest", help="email new relevant tenders (see settings.yaml)")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(f=cmd_digest)
-    sub.add_parser("push", help="send this PC's tenders to the website tender portal").set_defaults(f=cmd_push)
+    s = sub.add_parser("push", help="send this PC's tenders to the website tender portal")
+    s.add_argument("--check", action="store_true",
+                   help="do not send anything; say whether this PC can reach the website, and how")
+    s.set_defaults(f=cmd_push)
     sub.add_parser("rescore", help="re-apply config/rules.yaml to stored tenders").set_defaults(f=cmd_rescore)
     s = sub.add_parser("import-old", help="import data/tenders.json from the first Tender Watch")
     s.add_argument("path")

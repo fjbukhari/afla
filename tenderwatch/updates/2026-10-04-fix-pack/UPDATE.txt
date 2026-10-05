@@ -14,6 +14,7 @@ WHAT TO DO (two minutes)
        tw\browser.py
        tw\cli.py
        tw\settings.py
+       tw\push.py
        config\sources.yaml
 
    Keep the folders: tw\ files go in the tw folder, config\ files in the config folder.
@@ -93,3 +94,27 @@ ONE MORE THING ADDED 5 OCTOBER
    the website lines - stopped the program with twenty-five lines of Python. That was the
    program's fault, not yours. It now says which file, which line, what is on that line and
    what to do, in plain words. The same applies to config\sources.yaml.
+
+
+ALSO ADDED 5 OCTOBER - SENDING TO THE WEBSITE
+   `tw push` was reporting nonsense when it failed: "could not reach the website" and
+   "sent 12 tenders" on consecutive lines, then "Sent 0 tenders" at the end. The success line
+   was printed whatever happened, and counted the rows it meant to send rather than the rows
+   that arrived. It now says, per portal, how many of how many actually went.
+
+   It also said only "(URLError)", which is the name of a Python class. It now says what
+   happened in words - the connection was closed without an answer, the certificate could not
+   be checked, the name could not be looked up - and what that usually means.
+
+   And it no longer calls itself "Python-urllib" when it contacts the website. Shared hosting
+   firewalls commonly reject that outright by closing the connection, which is exactly the
+   "RemoteDisconnected" the office PC reported. That alone may be the whole problem.
+
+   If a push still fails:
+
+       tw push --check
+
+   sends nothing. It tries the website address from the program and then through the browser,
+   and says which worked. If the browser can reach it and the program cannot, the connection is
+   fine and the website's own firewall is refusing the program - which is something the hosting
+   support can allow, and the message gives them the wording.
